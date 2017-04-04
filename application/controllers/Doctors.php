@@ -197,14 +197,26 @@
 				  	
 				  	
 				  	/*   Kick off data scrape application  */				  	
-				  	$scrapeFile = exec("Rscript r_applications/scrape_connectmd.r ".$obj->searchDir, $output);
-				  	$scrapeFile = str_replace('"','',str_replace('[1] "', '', $scrapeFile));
+				  	$scrapeFileReturn = exec("Rscript r_applications/scrape_connectmd.r ".$obj->searchDir, $output);
+				  	$scrapeFileReturn = str_replace('"','',str_replace('[1] "', '', $scrapeFileReturn));
+				  	list($scrapeFile, $reviewFile) = explode("~",$scrapeFileReturn);
+				 
+					$csvObj = new stdClass;
+					$csvObj->title = "scrape_debug.txt";
+					$csvObj->file_location = "/r_working_dir/".$obj->searchDir."/scrape_debug.txt";
+				  	$csvfiles[] = $csvObj;					 
 				 
 				 
 					$csvObj = new stdClass;
 					$csvObj->title = $scrapeFile;
 					$csvObj->file_location = "/r_working_dir/".$obj->searchDir."/".$scrapeFile;
 				  	$csvfiles[] = $csvObj;	
+
+					$csvObj = new stdClass;
+					$csvObj->title = $reviewFile;
+					$csvObj->file_location = "/r_working_dir/".$obj->searchDir."/".$reviewFile;
+				  	$csvfiles[] = $csvObj;
+
 
 		      		echo json_encode($csvfiles);
 		      	break;

@@ -37,6 +37,66 @@
 		
 		switch(
 			site_key,
+			
+	        "yelp"={
+		        ###
+		        ### 	YELP
+				###		
+				###
+				###
+				###		NOTE:  this grabs the first page of results only, which is up to 10 results.   
+				###			It would be possible to grab another page or more of results with a loop. 
+				###			Pretty Straight forward xpath queries to get the data we require
+				###
+				
+				
+				### profile_names <- html_text(html_nodes(doc,xpath='//*[@class="regular-search-result"]/div/div/div[1]/div/div[2]/h3/span/a'))
+				### profile_urls <- html_attr(html_nodes(doc,xpath='//*[@class="regular-search-result"]/div/div/div[1]/div/div[2]/h3/span/a'),'href')
+				### profile_specialties <- html_text(html_nodes(doc,xpath='//*[@class="regular-search-result"]/div/div/div[1]/div/div[2]/div[@class="price-category"]/span/a'))
+				###  params for search url:  find_desc=doctors&find_loc=Philadelphia,+PA&start=0&cflt=familydr
+				
+				
+				###		Setup additional_search_params
+				returnObj$additional_search_params <- paste0("find_desc=",gsub(" ", "+", trimws(search_term)),"&find_loc=",gsub(" ", "+", trimws(location)))
+				
+				htmldoc <- getHTML(paste0(site_url, returnObj$additional_search_params))
+				
+				nodes <- html_nodes(htmldoc,xpath='//*[@class="regular-search-result"]')
+				
+				profile_names <- c()
+				profile_urls <- c()
+				profile_imgs <- c()
+				profile_specialties <- c()				
+				
+				if(length(nodes) > 0){
+					for (d in 1:length(nodes)){
+						profile_names[d] <- html_text(html_nodes(nodes[d],xpath="div/div/div[1]/div/div[2]/h3/span/a"))
+						profile_urls[d] <- html_attr(html_nodes(nodes[d],xpath='div/div/div[1]/div/div[2]/h3/span/a'),'href')
+						profile_imgs[d] <- ""
+						
+						specialty <- ""
+						specialties <- html_text(html_nodes(nodes[d],xpath='div/div/div[1]/div/div[2]/div[@class="price-category"]/span/a'))
+						if(length(specialties) > 0){
+							for(a in 1:length(specialties)){
+								specialty <- paste0(specialty, ", ", specialties[a])
+							}
+							specialty <- substr(specialty, 3, nchar(specialty))
+						}		
+						profile_specialties[d] <- specialty
+					}
+				}
+								
+				returnObj$data <- data.frame(
+					profileName = profile_names,
+					profileSpecialty = profile_specialties,
+					profileUrl  = profile_urls,
+					profileImg  = profile_imgs,
+					stringsAsFactors = FALSE
+				)				
+	        },
+			
+			
+			
 	        "ratemds"={
 		        ###
 		        ### 	RATEMDS
@@ -110,12 +170,7 @@
 				profile_imgs <- c()
 				profile_specialties <- c()				
 				
-				
-				debug ("<-------------- BEGIN VITALS DOCS ----------------------->")
-				debug (paste0("site_url:  ",site_url))
-				debug (paste0("search term:  ",search_term))
-				debug (paste0("doctor count:  ",docCount))
-				debug ("<-------------- END VITALS DOCS ----------------------->")
+			
 				
 				if(docCount > 0){
 					for (d in 1:docCount){
@@ -125,14 +180,9 @@
 						###  Error Checking:  if no specialy exists, add ""  think docs[[d]]$specialties[[1]] was causing an error
 						specialty <- "";
 						
-						debug("<--------------------- specialty ------------------------>")
-						debug(docs[[d]])
-						debug("Length:")
-						debug(length(docs[[d]]$specialty))
-						
 						
 						if(length(docs[[d]]$specialty) > 0){
-							for(a in length(docs[[d]]$specialty)){
+							for(a in 1:length(docs[[d]]$specialty)){
 								specialty <- paste0(docs[[d]]$specialty[[a]], " ")
 							}
 						}
@@ -172,26 +222,11 @@
 								
 				json <- fromJSON(paste0(site_url, returnObj$additional_search_params))
 				
-				debug("<<<<<<<-------------- BEGIN HG  ------------>>>>>>>>>")
-				##debug(nrow(json$search$searchResults$provider$results))
-				##if(json$search$searchResults$provider$results == NULL){
-				##	debug("RESULTS ARE NULL")
-				##}else{
-				##	debug("RESULTS NOT NULL")
-				##}
-				debug(site_url)
-				debug("additional_search_params: ")
-				debug(returnObj$additional_search_params)
-				debug("search_term:  ")
-				debug(search_term)
-				debug("<<<<<<<-------------- END HG  ------------>>>>>>>>>")
+
 				
 				df <- json$search$searchResults$provider$results;
 				if(is.data.frame(df) && nrow(df) > 0){
-					##debug("Results length: ")
-					##debug(nrow(json$search$searchResults$provider$results))
-				
-				
+
 					profile_names <- df[,"displayName"]
 	
 					profile_urls <- df[,"providerUrl"]
@@ -288,22 +323,26 @@
 				site_key = c (
 					"vitals", 
 					"ratemds", 
-					"healthgrades"
+					"healthgrades",
+					"yelp"
 				),
 				site_title = c (
 					"Vitals", 
 					"RateMDs", 
-					"HealthGrades"
+					"HealthGrades",
+					"Yelp"
 				),
 				search_url = c (
 					"http://592dc5anbt-dsn.algolia.net/1/indexes/*/queries?x-algolia-agent=Algolia%20for%20vanilla%20JavaScript%203.18.1&x-algolia-application-id=592DC5ANBT&x-algolia-api-key=3abbd60cc696b3a9d83ee2fcae88e351", 
 					"https://www.ratemds.com/best-doctors/", 
-					"https://www.healthgrades.com/api3/usearch?distances=National&sort.provider=bestmatch&categories=1&pageSize.provider=10&pageNum=1&isFirstRequest=true&"
+					"https://www.healthgrades.com/api3/usearch?distances=National&sort.provider=bestmatch&categories=1&pageSize.provider=10&pageNum=1&isFirstRequest=true&",
+					"https://www.yelp.com/search?"
 				),
 				site_home = c (
 					"http://www.vitals.com", 
 					"https://www.ratemds.com", 
-					"https://www.healthgrades.com"
+					"https://www.healthgrades.com",
+					"https://www.yelp.com"
 				),
 				stringsAsFactors = FALSE							
 			)
@@ -431,8 +470,6 @@
 		}	
 	} 
 
-	###debug("END:  ")
-	###debug(searchObj)
 	
 	###
 	### 	Write doctorData to file using jsonlite

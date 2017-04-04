@@ -25,6 +25,10 @@ y_num_ratings
 y_pos_ratings
 y_neut_ratings
 y_neg_ratings
+y_num_reviews
+y_pos_reviews
+y_neut_reviews
+y_neg_reviews
 y_neg_addressed
 r_num_prof
 r_own_prof
