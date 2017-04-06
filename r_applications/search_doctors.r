@@ -243,7 +243,99 @@
 						stringsAsFactors = FALSE
 					)
 				}
-	        }
+	        },
+	        "google"={
+		        ###
+		        ### 	GOOGLE
+				###		
+				###
+
+				
+				
+				### profile_names <- html_text(html_nodes(doc,xpath='//*[@class="regular-search-result"]/div/div/div[1]/div/div[2]/h3/span/a'))
+				### profile_urls <- html_attr(html_nodes(doc,xpath='//*[@class="regular-search-result"]/div/div/div[1]/div/div[2]/h3/span/a'),'href')
+				### profile_specialties <- html_text(html_nodes(doc,xpath='//*[@class="regular-search-result"]/div/div/div[1]/div/div[2]/div[@class="price-category"]/span/a'))
+				###  params for search url:  find_desc=doctors&find_loc=Philadelphia,+PA&start=0&cflt=familydr
+				
+				
+				###  get the latitude and longitude of the city, state provided
+				latLngObj <- geocode(location)
+				lat <- latLngObj[1,"lat"]
+				lng <- latLngObj[1,"lon"]
+				
+				debug("Google LAT:")
+				debug(lat)
+				debug ("GOOGLE:  LNG:")
+				debug(lng)
+				
+				
+				###  Modified Location for link to profile
+				locationStr <- gsub(" ", "+", trimws(location))
+				
+				debug("Modified Location Str:  ")
+				debug(locationStr)
+				
+				
+				### Modified SearchTerm for Parameters
+				searchTermStr <- gsub(" ", "+", trimws(search_term))
+				
+				debug("Modified SearchTerm:")
+				debug(searchTermStr)
+			
+				###		Setup additional_search_params
+				returnObj$additional_search_params <- paste0("keyword=",searchTermStr,"&location=",lat,",",lng)
+				
+				searchReturnObj <- fromJSON(paste0(site_url, returnObj$additional_search_params))
+
+				profile_names <- c()
+				profile_urls <- c()
+				profile_imgs <- c()
+				profile_specialties <- c()		
+				
+				debug("SEARCH RETURN OBJECT:")
+				debug(searchReturnObj)
+				
+				if(searchReturnObj$status == "OK"){
+					results <- searchReturnObj$results
+					resultsCount <- nrow(results)
+					
+					if(resultsCount >0){
+						profile_names <- results[,"name"]
+						profile_specialties <- sapply(results[,"types"],function(x) paste0(x, collapse=", "))
+						profile_imgs <- replicate(resultsCount, "")
+						profile_urls <- sapply(results[,"place_id"], function(x) paste0("#q=", searchTermStr, "+", locationStr, "&place_id=", x))
+									
+						#q=jones+fort+collins,co&place_id=xxxxx
+					
+					}
+					
+					#if(length(nodes) > 0){
+					#	for (d in 1:length(nodes)){
+					#		profile_names[d] <- html_text(html_nodes(nodes[d],xpath="div/div/div[1]/div/div[2]/h3/span/a"))
+					#		profile_urls[d] <- html_attr(html_nodes(nodes[d],xpath='div/div/div[1]/div/div[2]/h3/span/a'),'href')
+					#		profile_imgs[d] <- ""
+					#		
+					#		specialty <- ""
+					#		specialties <- html_text(html_nodes(nodes[d],xpath='div/div/div[1]/div/div[2]/div[@class="price-category"]/span/a'))
+					#		if(length(specialties) > 0){
+					#			for(a in 1:length(specialties)){
+					#				specialty <- paste0(specialty, ", ", specialties[a])
+					#			}
+					#			specialty <- substr(specialty, 3, nchar(specialty))
+					#		}		
+					#		profile_specialties[d] <- specialty
+					#	}
+					#}
+				}
+								
+				returnObj$data <- data.frame(
+					profileName = profile_names,
+					profileSpecialty = profile_specialties,
+					profileUrl  = profile_urls,
+					profileImg  = profile_imgs,
+					stringsAsFactors = FALSE
+				)	        
+			}
 		)
 		
 
@@ -324,25 +416,29 @@
 					"vitals", 
 					"ratemds", 
 					"healthgrades",
-					"yelp"
+					"yelp",
+					"google"
 				),
 				site_title = c (
 					"Vitals", 
 					"RateMDs", 
 					"HealthGrades",
-					"Yelp"
+					"Yelp",
+					"Google"
 				),
 				search_url = c (
 					"http://592dc5anbt-dsn.algolia.net/1/indexes/*/queries?x-algolia-agent=Algolia%20for%20vanilla%20JavaScript%203.18.1&x-algolia-application-id=592DC5ANBT&x-algolia-api-key=3abbd60cc696b3a9d83ee2fcae88e351", 
 					"https://www.ratemds.com/best-doctors/", 
 					"https://www.healthgrades.com/api3/usearch?distances=National&sort.provider=bestmatch&categories=1&pageSize.provider=10&pageNum=1&isFirstRequest=true&",
-					"https://www.yelp.com/search?"
+					"https://www.yelp.com/search?",
+					"https://maps.googleapis.com/maps/api/place/nearbysearch/json?radius=50000&key=AIzaSyDWmQOAoJj3B6-IwCrgbNqEhCgVjzwilNU&"
 				),
 				site_home = c (
 					"http://www.vitals.com", 
 					"https://www.ratemds.com", 
 					"https://www.healthgrades.com",
-					"https://www.yelp.com"
+					"https://www.yelp.com",
+					"http://google.com"
 				),
 				stringsAsFactors = FALSE							
 			)
@@ -387,7 +483,7 @@
 	if (! require(httr, quietly = TRUE)){ 
 	    install.packages("httr", repos='http://cran.us.r-project.org')
 		library("httr")
-	}	
+	}			
 ####################################################
 ###		END:   REQUIRED PACKAGES
 ####################################################
@@ -443,6 +539,9 @@
 	###
 	workingDir <- paste0(getwd(),"/r_working_dir/",args[1])
 	setwd(workingDir)
+	
+	
+	sink("search_debug.txt", append=FALSE, split=TRUE)	
 	
 
 	###

@@ -56,6 +56,14 @@ if (! require(jsonlite, quietly = TRUE)){
 }
 
 
+if (! require(anytime, quietly = TRUE)){ 
+    install.packages("anytime", repos='http://cran.us.r-project.org')
+	library("anytime")
+}
+
+### GOOGLE API KEY:
+google_api_key <- "AIzaSyDWmQOAoJj3B6-IwCrgbNqEhCgVjzwilNU"
+
 ### Set working directory and load needed functions
 
 setwd(paste0(getwd(), "/r_applications"))
@@ -175,37 +183,40 @@ for (i in 1:length(subjects[["subject_key"]])) {  ### loop over docs  i <- 14  j
 			colnames(subjectSiteProfileData) <- dataItemList[,"data_id"]
 			
 			
-			html_doc <- read_html(aURL, verbose=FALSE)
+			
+			if(aSiteKey != "google"){
+				html_doc <- read_html(aURL, verbose=FALSE)
 			
 			
-			##debug("BEGIN DataItemList LOOP")  
-			for (k in 1:length(dataItemList[["data_id"]])) { 
-				dataItemName <- dataItemList[k,"data_id"]
-				dataItemElement <- dataItemList[k,"element"]
-				dataItemXPath <- dataItemList[k,"xpath"]
-				dataItemElementId <- dataItemList[k,"element_id"]
-				if (dataItemElement == "exist") {
-					subjectSiteProfileData[1,dataItemName] <- getExistance(html_doc, xp=dataItemXPath)
-					debug(paste0("EXIST:  ", dataItemName, ":"))
-					debug(subjectSiteProfileData[1,dataItemName])
-
-				}
-				if (dataItemElement == "text") {
-					subjectSiteProfileData[1,dataItemName] <- getTextContent(html_doc, xp=dataItemXPath)
-					debug(paste0("TEXT:  ", dataItemName, ":"))
-					debug(subjectSiteProfileData[1,dataItemName])					
-				}
-				if (dataItemElement == "attribute") {
-					val <- getAttributeValue(html_doc, xp=dataItemXPath, element_id=dataItemElementId)
-					if(is.na(val)){
-						val <- 0
+				##debug("BEGIN DataItemList LOOP")  
+				for (k in 1:length(dataItemList[["data_id"]])) { 
+					dataItemName <- dataItemList[k,"data_id"]
+					dataItemElement <- dataItemList[k,"element"]
+					dataItemXPath <- dataItemList[k,"xpath"]
+					dataItemElementId <- dataItemList[k,"element_id"]
+					if (dataItemElement == "exist") {
+						subjectSiteProfileData[1,dataItemName] <- getExistance(html_doc, xp=dataItemXPath)
+						debug(paste0("EXIST:  ", dataItemName, ":"))
+						debug(subjectSiteProfileData[1,dataItemName])
+	
 					}
-					subjectSiteProfileData[1,dataItemName] <- val
-					debug(paste0("xxxAttribute:  ", dataItemName, ":"))
-					debug(subjectSiteProfileData[1,dataItemName])
+					if (dataItemElement == "text") {
+						subjectSiteProfileData[1,dataItemName] <- getTextContent(html_doc, xp=dataItemXPath)
+						debug(paste0("TEXT:  ", dataItemName, ":"))
+						debug(subjectSiteProfileData[1,dataItemName])					
+					}
+					if (dataItemElement == "attribute") {
+						val <- getAttributeValue(html_doc, xp=dataItemXPath, element_id=dataItemElementId)
+						if(is.na(val)){
+							val <- 0
+						}
+						subjectSiteProfileData[1,dataItemName] <- val
+						debug(paste0("xxxAttribute:  ", dataItemName, ":"))
+						debug(subjectSiteProfileData[1,dataItemName])
+					}
 				}
+				##debug("END DataItemList LOOP")
 			}
-			##debug("END DataItemList LOOP")  
 	
 			### Handle special case data elements without the loop
 			##debug("BEGIN SPECIAL CASE ITEMS")
@@ -283,9 +294,6 @@ for (i in 1:length(subjects[["subject_key"]])) {  ### loop over docs  i <- 14  j
 					numReviewRows <- nrow(reviewInfo)
 		
 					if(numReviewRows > 0){
-						debug("REVIEWINFO HG:")
-						debug(reviewInfo[,"rating"])
-						debug(reviewInfo[,"text"])
 						masterReviewData <- rbind(masterReviewData, 
 							data.frame(
 								subject=replicate(numReviewRows, aSubjKey), 
@@ -377,6 +385,64 @@ for (i in 1:length(subjects[["subject_key"]])) {  ### loop over docs  i <- 14  j
 
 
 			}
+			
+			
+			if (aSiteKey == "google"){
+				#searchReturnObj <- fromJSON(paste0(site_url, returnObj$additional_search_params)
+				
+				debug("GOOGLE SPECIAL CASE DATA:")
+				debug(aURL)
+				
+				regexMatch <- gregexpr("place_id",aURL)
+				place_id <- substr(aURL, regexMatch[[1]][1] + 9,nchar(aURL))
+
+				## Get the JSON for the place_id
+				jsonURL <- paste0("https://maps.googleapis.com/maps/api/place/details/json?placeid=", place_id, "&key=", google_api_key)
+				
+				debug("JSON URL:")
+				debug(jsonURL)
+				googleJSON <- fromJSON(jsonURL)
+				
+				debug("GOOGLE JSON:")
+				debug(googleJSON)
+				
+				if(googleJSON$status == "OK"){
+					g_rating <- googleJSON$result$rating
+					if(!is.null(g_rating)){
+						subjectSiteProfileData[1,"g_rating"] <- g_rating					
+					}
+					reviews <- googleJSON$result$reviews
+					if(!is.null(reviews)){
+						debug("REVIEWS")
+						debug(reviews)	
+						
+						subjectSiteProfileData[1,"g_num_ratings"] <- subjectSiteProfileData[1,"g_num_reviews"] <- nrow(reviews)
+						subjectSiteProfileData[1,"g_pos_ratings"] <- subjectSiteProfileData[1,"g_pos_reviews"] <- nrow(reviews[as.numeric(reviews$rating) >= 4,])
+						subjectSiteProfileData[1,"g_neut_ratings"] <- subjectSiteProfileData[1,"g_neut_reviews"] <- nrow(reviews[as.numeric(reviews$rating) == 3,])
+						subjectSiteProfileData[1,"g_neg_ratings"] <- subjectSiteProfileData[1,"g_neg_reviews"] <- nrow(reviews[as.numeric(reviews$rating) < 3,])
+												
+						
+						
+						
+										
+
+						masterReviewData <- rbind(masterReviewData, 
+							data.frame(
+								subject=replicate(nrow(reviews), aSubjKey), 
+								site=replicate(nrow(reviews), aSiteKey), 
+								date=sapply(reviews[,"time"], function(x) as.character(anydate(x))), 
+								rating=reviews[,"rating"], 
+								text=reviews[,"text"]
+							)
+						)						
+						
+					
+					}
+				}
+			}			
+			
+			
+			
 			##debug("END SPECIAL CASE ITEMS")
 	
 			###  Set "_num_prof" = 1
