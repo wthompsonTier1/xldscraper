@@ -193,7 +193,7 @@ for (i in 1:length(subjects[["subject_key"]])) {  ### loop over docs  i <- 14  j
 			if(is.na(partialURL) | partialURL == ""){
 				next
 			}
-			aURL <- paste0(sites[sites[["site_key"]]==aSiteKey,"search_url"], profilesForSite[j,"site_subject_ident"])
+			aURL <- paste0(sites[sites[["site_key"]]==aSiteKey,"site_home"], profilesForSite[j,"site_subject_ident"])
 			debug(paste0("<-----  BEGIN PROFILE LOOP (subject: ",i," site: ", aSubjKey, " profile-num: ", j, " url: ", aURL, ")  ----->"))
 			
 			subjectSiteProfileData <- matrix(data="", nrow=1, ncol=nrow(dataItemList))
