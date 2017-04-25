@@ -134,8 +134,9 @@ for (i in 1:length(subjects[["subject_key"]])) {  ### loop over docs  i <- 14  j
 	aDocName <- subjects[i,"subject_name"]
 	
 	debug(paste0("<---------  BEGIN SUBJECT LOOP (",i,": ", aSubjKey, ")  --------->"))
-	###debug("Site List for Subject:  ")
-	###debug(siteList)
+	
+	debug("Site List for Subject:  ")
+	debug(siteList)
 	
 	##temp <- unique(siteList$site_key)
 	##debug("Unique Site Keys:")
@@ -152,8 +153,18 @@ for (i in 1:length(subjects[["subject_key"]])) {  ### loop over docs  i <- 14  j
 
 
 	uniqueSites <- unique(siteList$site_key)  
+	debug("Unique Sites:")
+	debug(uniqueSites)
 	for(us in 1:length(uniqueSites)){
 		aSiteKey <- uniqueSites[us]
+		debug("SITEKEY:  ")
+		debug(aSiteKey)
+		
+		###SKIP FACEBOOK HERE FOR NOW????
+		if(is.na(aSiteKey) | aSiteKey == "facebook"){
+			next
+		}
+		
 		
 		dataItemList <- dataids[dataids[["site_key"]]==aSiteKey,] 
 		
@@ -166,6 +177,8 @@ for (i in 1:length(subjects[["subject_key"]])) {  ### loop over docs  i <- 14  j
 		profilesForSite <- siteList[siteList$site_key == aSiteKey,]
 		
 		
+		
+		
 
 		siteFirstChar <- substr(aSiteKey,1,1)
 		debug(paste0("First Char of aSiteKey:  ", siteFirstChar))
@@ -175,8 +188,12 @@ for (i in 1:length(subjects[["subject_key"]])) {  ### loop over docs  i <- 14  j
 
 		debug(paste0("<-------  BEGIN PROCESSING PROFILES FOR SUBJECT/SITE (", aSubjKey, ", ", aSiteKey, ") ---------->"))
 		for (j in 1:nrow(profilesForSite)) {   ### Loop over sites j <- 1
-	
-			aURL <- paste0(sites[sites[["site_key"]]==aSiteKey,"site_base_url"], profilesForSite[j,"site_subject_ident"])
+			
+			partialURL <- profilesForSite[j,"site_subject_ident"]
+			if(is.na(partialURL) | partialURL == ""){
+				next
+			}
+			aURL <- paste0(sites[sites[["site_key"]]==aSiteKey,"search_url"], profilesForSite[j,"site_subject_ident"])
 			debug(paste0("<-----  BEGIN PROFILE LOOP (subject: ",i," site: ", aSubjKey, " profile-num: ", j, " url: ", aURL, ")  ----->"))
 			
 			subjectSiteProfileData <- matrix(data="", nrow=1, ncol=nrow(dataItemList))
@@ -457,11 +474,17 @@ for (i in 1:length(subjects[["subject_key"]])) {  ### loop over docs  i <- 14  j
 	   
 	   debug(paste0("Data for Subject (",aSubjKey,") for Site (",aSiteKey,"):"))
 	   debug(subjectSiteData)
+	   debug("NUMBER ROWS OF SUBJECT SITE DATA:")
+	   debug(nrow(subjectSiteData))
 	   ###
 	   #	Need to combine the column values in subjectSiteData.  NOTE, need to come up with a strategy that allows us to 
 	   #	combine the necessary columns, excluding some columns, and allowing for special case calculations (rating with 
 	   #	multiple profiles)
 	   ###
+	   if(nrow(subjectSiteData) == 0){
+		   next
+	   }
+	   
 	   
 	   if(nrow(subjectSiteData)> 1){
 		   

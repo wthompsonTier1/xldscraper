@@ -335,7 +335,26 @@
 					profileImg  = profile_imgs,
 					stringsAsFactors = FALSE
 				)	        
-			}
+			},
+	        "facebook"={
+		        ###
+		        ### 	FACEBOOK
+				###		
+				###
+
+				profile_names <- c()
+				profile_urls <- c()
+				profile_imgs <- c()
+				profile_specialties <- c()		
+			
+				returnObj$data <- data.frame(
+					profileName = profile_names,
+					profileSpecialty = profile_specialties,
+					profileUrl  = profile_urls,
+					profileImg  = profile_imgs,
+					stringsAsFactors = FALSE
+				)	        
+			}			
 		)
 		
 
@@ -409,41 +428,47 @@
 	
 	
 	
-	getSites <- function(){
-		return(
-			data.frame(
-				site_key = c (
-					"vitals", 
-					"ratemds", 
-					"healthgrades",
-					"yelp",
-					"google"
-				),
-				site_title = c (
-					"Vitals", 
-					"RateMDs", 
-					"HealthGrades",
-					"Yelp",
-					"Google"
-				),
-				search_url = c (
-					"http://592dc5anbt-dsn.algolia.net/1/indexes/*/queries?x-algolia-agent=Algolia%20for%20vanilla%20JavaScript%203.18.1&x-algolia-application-id=592DC5ANBT&x-algolia-api-key=3abbd60cc696b3a9d83ee2fcae88e351", 
-					"https://www.ratemds.com/best-doctors/", 
-					"https://www.healthgrades.com/api3/usearch?distances=National&sort.provider=bestmatch&categories=1&pageSize.provider=10&pageNum=1&isFirstRequest=true&",
-					"https://www.yelp.com/search?",
-					"https://maps.googleapis.com/maps/api/place/nearbysearch/json?radius=50000&key=AIzaSyDWmQOAoJj3B6-IwCrgbNqEhCgVjzwilNU&"
-				),
-				site_home = c (
-					"http://www.vitals.com", 
-					"https://www.ratemds.com", 
-					"https://www.healthgrades.com",
-					"https://www.yelp.com",
-					"http://google.com"
-				),
-				stringsAsFactors = FALSE							
-			)
-		)
-	}
+#	getSites <- function(){
+#		
+#		
+#		#return(
+#		#	data.frame(
+#		#		site_key = c (
+#		#			"vitals", 
+#		#			"ratemds", 
+#		#			"healthgrades",
+#		#			"yelp",
+#		#			"google",
+#		#			"facebook"
+#		#		),
+#		#		site_title = c (
+#		#			"Vitals", 
+#		#			"RateMDs", 
+#		#			"HealthGrades",
+#		#			"Yelp",
+#		#			"Google",
+#		#			"Facebook"
+#		#		),
+#		#		search_url = c (
+#		#			"http://592dc5anbt-dsn.algolia.net/1/indexes/*/queries?x-algolia-agent=Algolia%20for%20vanilla%20JavaScript%203.18.1&x-algolia-application-id=592DC5ANBT&x-algolia-api-key=3abbd60cc696b3a9d83ee2fcae88e351", 
+#		#			"https://www.ratemds.com/best-doctors/", 
+#		#			"https://www.healthgrades.com/api3/usearch?distances=National&sort.provider=bestmatch&categories=1&pageSize.provider=10&pageNum=1&isFirstRequest=true&",
+#		#			"https://www.yelp.com/search?",
+#		#			"https://maps.googleapis.com/maps/api/place/nearbysearch/json?radius=50000&key=AIzaSyDWmQOAoJj3B6-IwCrgbNqEhCgVjzwilNU&",
+#		#			""
+#		#		),
+#		#		site_home = c (
+#		#			"http://www.vitals.com", 
+#		#			"https://www.ratemds.com", 
+#		#			"https://www.healthgrades.com",
+#		#			"https://www.yelp.com",
+#		#			"http://google.com",
+#		#			"http://facebook.com"
+#		#		),
+#		#		stringsAsFactors = FALSE							
+#		#	)
+#		#)
+#	}
 
 ####################################################
 ###		END:   FUNCTIONS
@@ -501,6 +526,10 @@
 	testing <- TRUE
 	
 	
+
+
+	
+	
 	###
 	### 	Setup the "searchObj" object.  This is the structure that will be turned into json
 	### 	and written to the output file
@@ -512,7 +541,7 @@
 		searchDir = "",
 		inputfile = unbox("search.txt"),
 		outputfile = unbox("search_results.txt"),
-		sites = getSites(),
+		sites = "",
 		results = list()		
 	)
 	
@@ -540,6 +569,10 @@
 	workingDir <- paste0(getwd(),"/r_working_dir/",args[1])
 	setwd(workingDir)
 	
+	
+		###  Load in the Sites.csv
+	searchSiteInfo <- read.csv("Sites.csv", header = TRUE, sep = ",", stringsAsFactors = FALSE)
+	searchObj$sites = searchSiteInfo
 	
 	sink("search_debug.txt", append=FALSE, split=TRUE)	
 	

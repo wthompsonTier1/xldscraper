@@ -18,7 +18,9 @@
                     <li class="page-scroll">
                         <a href="<?php echo base_url(); ?>doctors/bulkadd">Search</a>
                     </li>
-
+                    <li class="page-scroll">
+                        <a href="<?php echo base_url(); ?>uploadcsv/index">Upload CSV Files</a>
+                    </li>
                 </ul>
             </div>
             <!-- /.navbar-collapse -->

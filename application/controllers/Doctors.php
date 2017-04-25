@@ -3,37 +3,13 @@
         public function __construct()
         {
                 parent::__construct();
-                $this->load->model('doctors_model');
+                $this->load->model('Searchsites_model');
+                $this->load->model('ScrapeResults_model');
                 $this->load->helper('url');
 				$this->output->delete_cache();
                 
         }
 
-        public function index()
-        {
-	       	if ( ! file_exists(APPPATH.'views/doctors/index.php'))
-	        {
-	                // Whoops, we don't have a page for that!
-	                show_404();
-	        }
-	        $data['sitetitle'] = "XLD Data Mining";
-            $data['doctors'] = $this->doctors_model->get_doctors();
-            $data['title'] = "Doctors Index";
-            $this->load->view("templates/header",$data);
-            $this->load->view("templates/navigation",$data);
-            $this->load->view("doctors/index",$data);
-            $this->load->view("templates/footer",$data);
-        }
-
-
-		/*  NOT HOOKED UP YET! 
-		
-        public function view($slug = NULL)
-        {
-                $data['doctors_item'] = $this->doctors_model->get_doctors($slug);
-        }
-        
-        */
         
         public function bulkadd(){
 	       	if ( ! file_exists(APPPATH.'views/doctors/bulkadd.php'))
@@ -83,6 +59,12 @@
 			  		fwrite($file,implode("~",explode("\n",$data['doctors']))."\n");
 			  		fclose($file);
 			  		
+			  		/*  create the Sites.csv file in the working directory */
+			  		
+			  		$this->Searchsites_model->createCSV("r_working_dir/".$searchDir);
+			  		
+			  		
+			  		
 			  		// execute R script from shell
 			  		// this will save a plot at temp.png to the filesystem
 			  		//exec("Rscript r_applications/search_doctors.R ".$filename." ".$results_filename, $output);
@@ -105,125 +87,67 @@
 		      case 'create-csv-files':
 		      		//error_log("Inside create-csv-files");
 		      		$csvfiles = array();
-		      		//$csvfiles[] = "temp1.csv";
-		      		//$csvfiles[] = "temp2.csv";
-		      		//$csvfiles[] = "temp3.csv";
-		      		
+		
 		      		$obj = new stdClass;
 		      		$obj->sites = $data['sites'];
 		      		$obj->profiles = $data['profiles'];
 		      		$obj->searchDir = $data['searchDir'];
 		      		
+		      		$working_dir = "r_working_dir/".$obj->searchDir;
+		      		
 		      		//Write profile information to file for future use
-		      		$fp = fopen('r_working_dir/'.$obj->searchDir.'/profiles-to-scrape.txt', 'w');
+		      		$fp = fopen($working_dir.'/profiles-to-scrape.txt', 'w');
 		      		fwrite($fp, json_encode($obj));
 		      		fclose($fp);
-
-		      		
-		      		
-		      		
 		      		
 			  		/*  Create the Sites.csv  */
-		      		/*  
-			      		site_key	site_title	site_base_url
-				  		vitals	Vitals.com	http://vitals.com/doctors/
-				  	*/
-				  	$fp = fopen('r_working_dir/'.$obj->searchDir.'/Sites.csv', 'w');
-				  	fputcsv($fp, array("site_key","site_title","site_base_url"));
-					foreach ($obj->sites as $site) {
-					    fputcsv($fp, array($site['site_key'],$site['site_title'],$site['site_home']));
-					}
-					fclose($fp);
-					$csvObj = new stdClass;
-					$csvObj->title = "Site.csv";
-					$csvObj->file_location = "/r_working_dir/".$obj->searchDir."/Sites.csv";
-				  	$csvfiles[] = $csvObj;
-				  	
-				  	/* Create the Subject_Site_Identifiers.csv */
-				  	$fp = fopen('r_working_dir/'.$obj->searchDir.'/Subject_Site_Identifiers.csv', 'w');
-				  	fputcsv($fp, array("subject_key","site_key","site_subject_ident"));
+			  		$this->Searchsites_model->createCSV($working_dir);			            
 					
-					foreach ($obj->profiles as $profile) {
-					    fputcsv($fp, array(
-					    	$this->createSubjectId($profile['search_item_num'], $profile['search_term']),
-					    	$profile['site_key'],
-					    	$profile['url']
-					    ));
+				  	
+				  	/* Create the Subject_Site_Identifiers.csv   and Subjects.csv*/
+				  	$ssi_fp = fopen($working_dir.'/Subject_Site_Identifiers.csv', 'w');
+				  	fputcsv($ssi_fp, array("subject_key","site_key","site_subject_ident"));					
+				  	
+				  	$s_fp = fopen($working_dir.'/Subjects.csv', 'w');
+				  	fputcsv($s_fp, array("subject_key","subject_name"));
+				  	
+				  	foreach($obj->profiles as $subject){
+						fputcsv($s_fp, array(
+							$this->createSubjectId($subject['search_item_num'],$subject['search_term']),
+							$subject['search_term']
+							)
+						);
+						
+						foreach($subject['healthgrades'] as $profile){
+							$this->addToCsv($ssi_fp, $subject, "healthgrades", $profile);	
+					  	}
+						foreach($subject['vitals'] as $profile){
+							$this->addToCsv($ssi_fp, $subject, "vitals", $profile);	
+					  	}
+						foreach($subject['ratemds'] as $profile){
+							$this->addToCsv($ssi_fp, $subject, "ratemds", $profile);	
+					  	}
+						foreach($subject['yelp'] as $profile){
+							$this->addToCsv($ssi_fp, $subject, "yelp", $profile);	
+					  	}
+						foreach($subject['google'] as $profile){
+							$this->addToCsv($ssi_fp, $subject, "google", $profile);	
+					  	}
+						foreach($subject['facebook'] as $profile){
+							$this->addToCsv($ssi_fp, $subject, "facebook", $profile);	
+					  	}		
 					}
-					fclose($fp);
-					$csvObj = new stdClass;
-					$csvObj->title = "Subject_Site_Identifiers.csv";
-					$csvObj->file_location = "/r_working_dir/".$obj->searchDir."/Subject_Site_Identifiers.csv";
-				  	$csvfiles[] = $csvObj;
-				  	
-				  	
-				  	
-				  	
-				  	/*
-				  	subject_key	site_key	site_subject_ident
-				  	daniel-g-fagel	ratemds	2259255/Dr-DANIEL+G.-FAGEL-Crestview+Hills-KY.html
-				  	daniel-g-fagel	healthgrades	dr-daniel-fagel-3fxtn
-				  	daniel-g-fagel	vitals	Dr_Daniel_Fagel.html
-				  	*/
-				  	
-				  	/*  Create the Subjects.csv */
-				  	/*
-				  	subject_key	subject_name
-				  	daniel-g-fagel	Daniel G. Fagel M.D.
-				  	
-				  	
-				  				site_key: $(".hidden-data .site_key",row).text(),
-								search_term: $(".hidden-data .search_term",row).text(),
-								url: $(".hidden-data .url",row).text()
-				  	
-				  	*/
-				  	$subjectIdList = array();
-				  	$fp = fopen('r_working_dir/'.$obj->searchDir.'/Subjects.csv', 'w');
-				  	fputcsv($fp, array("subject_key","subject_name"));
-					
-					foreach ($obj->profiles as $profile) {
-						$subjectId = $this->createSubjectId($profile['search_item_num'],$profile['search_term']);
-						if(!in_array($subjectId, $subjectIdList)){
-							$subjectIdList[] = $subjectId;
-							fputcsv($fp, array($subjectId,$profile['search_term']));
-						}
-					}
-					fclose($fp);
-					$csvObj = new stdClass;
-					$csvObj->title = "Subjects.csv";
-					$csvObj->file_location = "/r_working_dir/".$obj->searchDir."/Subjects.csv";
-				  	$csvfiles[] = $csvObj;		
-				  	
-				  	
-				  	
+					fclose($s_fp);
+					fclose($ssi_fp);
+				
 				  	/*   Kick off data scrape application  */				  	
 				  	$scrapeFileReturn = exec("Rscript r_applications/scrape_connectmd.r ".$obj->searchDir, $output);
-				  	$scrapeFileReturn = str_replace('"','',str_replace('[1] "', '', $scrapeFileReturn));
-				  	list($scrapeFile, $reviewFile) = explode("~",$scrapeFileReturn);
-				 
-					$csvObj = new stdClass;
-					$csvObj->title = "scrape_debug.txt";
-					$csvObj->file_location = "/r_working_dir/".$obj->searchDir."/scrape_debug.txt";
-				  	$csvfiles[] = $csvObj;					 
-				 
-				 
-					$csvObj = new stdClass;
-					$csvObj->title = $scrapeFile;
-					$csvObj->file_location = "/r_working_dir/".$obj->searchDir."/".$scrapeFile;
-				  	$csvfiles[] = $csvObj;	
 
-					$csvObj = new stdClass;
-					$csvObj->title = $reviewFile;
-					$csvObj->file_location = "/r_working_dir/".$obj->searchDir."/".$reviewFile;
-				  	$csvfiles[] = $csvObj;
-
-
-		      		echo json_encode($csvfiles);
+		      		echo json_encode($this->ScrapeResults_model->get_results($working_dir, $scrapeFileReturn));
 		      	break;
 		      	
 		      	
 	        }
-	        //echo json_encode($data);
         }
         
         private function createSubjectId($itemnum, $val){
@@ -232,6 +156,14 @@
 	         $val .= "-". $itemnum;
 			 return $val;
         }
+               
+        private function addToCsv($filepointer, $subject, $site_key, $profile){
+	    	fputcsv($filepointer, array(
+		    	$this->createSubjectId($subject['search_item_num'], $subject['search_term']),
+		    	$site_key,
+		    	$profile
+			));	        
+        }       
                
 	}
 

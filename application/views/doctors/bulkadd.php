@@ -77,6 +77,11 @@
 			var profile_count = 0;
 			$.each( data.results, function( d, doctor ) {
 				output += "<div class='container doctor-container'>";
+					output += "<div class='hidden-data'>";
+						output += "<div class='subject_item_num'>"+(d+1)+"</div>";
+						output += "<div class='subject_search_term'>"+doctor.search_term+"</div>";
+					output += "</div>";				
+				
 					
 					/*  create row with #, doctor name, and search location  */
 					output += "<div class='row name-location-row'>";
@@ -184,7 +189,7 @@
 		
 		
 		function getCSVButton(){
-			return "<button class='btn btn-primary btn-md create-csv'>Create CSV Files</button>";
+			return "<button class='btn btn-primary btn-md create-csv'>Scrape Profiles</button>";
 		}
 		
 		
@@ -275,6 +280,84 @@
 						console.log("Create CSV files");
 						var profile_data = [];
 						
+						$(".doctor-container").each(function(index){
+							var subject = {};
+							subject.search_item_num = $(".subject_item_num",this).text(); 
+							subject.search_term = $(".subject_search_term",this).text(); 
+							
+							subject.healthgrades = [];
+							subject.ratemds = [];
+							subject.vitals = [];
+							subject.yelp = [];
+							subject.google = [];
+							subject.facebook = [];
+							
+							
+							/*  get healthgrade profiles */
+							var nodes = $(".profile-row:visible .hidden-data .site_key:contains('healthgrades')",$(".doctor-container")[0]).parent().parent();
+							if(nodes.length > 0 ){
+								nodes.each(function(index){
+									subject.healthgrades.push($(".hidden-data .url", this).text());
+								});
+							}else{
+								subject.healthgrades.push("");
+							}		
+							/*  get ratemds profiles */
+							var nodes = $(".profile-row:visible .hidden-data .site_key:contains('ratemds')",$(".doctor-container")[0]).parent().parent();
+							if(nodes.length > 0 ){
+								nodes.each(function(index){
+									subject.ratemds.push($(".hidden-data .url", this).text());
+								});
+							}else{
+								subject.ratemds.push("");
+							}
+							/*  get vitals profiles */
+							var nodes = $(".profile-row:visible .hidden-data .site_key:contains('vitals')",$(".doctor-container")[0]).parent().parent();
+							if(nodes.length > 0 ){
+								nodes.each(function(index){
+									subject.vitals.push($(".hidden-data .url", this).text());
+								});
+							}else{
+								subject.vitals.push("");
+							}
+							/*  get yelp profiles */
+							var nodes = $(".profile-row:visible .hidden-data .site_key:contains('yelp')",$(".doctor-container")[0]).parent().parent();
+							if(nodes.length > 0 ){
+								nodes.each(function(index){
+									subject.yelp.push($(".hidden-data .url", this).text());
+								});
+							}else{
+								subject.yelp.push("");
+							}
+							/*  get google profiles */
+							var nodes = $(".profile-row:visible .hidden-data .site_key:contains('google')",$(".doctor-container")[0]).parent().parent();
+							if(nodes.length > 0 ){
+								nodes.each(function(index){
+									subject.google.push($(".hidden-data .url", this).text());
+								});
+							}else{
+								subject.google.push("");
+							}
+							/*  get facebook profiles */
+							var nodes = $(".profile-row:visible .hidden-data .site_key:contains('facebook')",$(".doctor-container")[0]).parent().parent();
+							if(nodes.length > 0 ){
+								nodes.each(function(index){
+									subject.facebook.push($(".hidden-data .url", this).text());
+								});
+							}else{
+								subject.facebook.push("");
+							}																																			
+							
+							
+							
+							
+												
+							profile_data.push(subject);
+						});
+						
+						console.log("PROFILE DATA TO SCRAPE:");
+						console.log(profile_data);
+						/*
 						var profileRows = $(".profile-row:visible");
 						
 						$.each(profileRows, function(i,row){
@@ -286,7 +369,10 @@
 							}
 							profile_data.push(p);
 						});
-							
+						
+						*/
+						
+						
 						showSpinner();	
 						$.ajax({
 							type: "POST",
@@ -299,6 +385,7 @@
 								searchDir: _searchDir
 							},
 							success: function(data) {
+								
 								var output = "<div class='container'>";
 								output += "<div class='row'>";
 								output += "<div class='col col-sm-12'>";
@@ -310,7 +397,7 @@
 								output += "</ul></div></div></div>";
 								$("#results-content").html(output);
 							}
-						});			
+						});	
 					});
 				}
 			});			
