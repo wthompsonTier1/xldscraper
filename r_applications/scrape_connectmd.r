@@ -95,8 +95,29 @@ debug(paste0("SEARCH DIR:  ", searchDir))
 
 
 sites <- read.csv("Sites.csv", header = TRUE, sep = ",", stringsAsFactors = FALSE)  ### site names and urls
+
+
+###Load in subjects.csv file; fix column names; lowercase subject_key values
 subjects <- read.csv("Subjects.csv", header = TRUE, sep = ",", stringsAsFactors = FALSE)  ### subject names and ids
+names(subjects)[1] <- "subject_key"
+names(subjects)[2] <- "subject_name"
+subjects["subject_key"] <- lapply(subjects["subject_key"],function(x){tolower(x)})
+
+
+###Load in subject_site_identifier.csv file; fix column names; lowercase subject_key and site key values
 subj_site_id <- read.csv("Subject_Site_Identifiers.csv", header = TRUE, sep = ",", stringsAsFactors = FALSE)  ### subject ids and url differentiators
+names(subj_site_id)[1] <- "subject_key"
+names(subj_site_id)[2] <- "site_key"
+names(subj_site_id)[3] <- "site_subject_ident"
+subj_site_id["subject_key"] <- lapply(subj_site_id["subject_key"],function(x){tolower(x)})
+subj_site_id["site_key"] <- lapply(subj_site_id["site_key"],function(x){tolower(x)})
+
+
+
+
+
+
+
 debug("<--------  BEGIN:  CSV DATA -------------->")
 debug("SITES: ")
 debug(sites)
@@ -109,11 +130,13 @@ debug(subjects)
 debug(paste0("PROFILES:  ",nrow(subj_site_id)))
 debug(subj_site_id)
 
+
 debug("REPORT COLUMN NAMES: ")
 debug(report_colnames)
 
 debug("DATAIDS:  ")
 debug(dataids)
+
 
 debug("<--------  END:  CSV DATA -------------->")
 
@@ -126,6 +149,13 @@ colnames(results) <- report_colnames
 ### create data frame to collect reviews information
 masterReviewData <- matrix(data="", nrow=0, ncol = 5)
 colnames(masterReviewData) <- c("subject", "site", "date", "rating", "text")
+
+### create profile-report data frame to collect issues with individual profiles 
+### supplied in the site_subject_identifiers csv file
+profileReport <- matrix(data="", nrow=0, ncol = 4)
+colnames(profileReport) <- c("subject", "site", "ident", "status")
+
+
 
 ### Loop through all data and grab the data elements from the sites with the corresponding xpath expression
 for (i in 1:length(subjects[["subject_key"]])) {  ### loop over docs  i <- 14  j <- 1 k <- 7
@@ -160,10 +190,7 @@ for (i in 1:length(subjects[["subject_key"]])) {  ### loop over docs  i <- 14  j
 		debug("SITEKEY:  ")
 		debug(aSiteKey)
 		
-		###SKIP FACEBOOK HERE FOR NOW????
-		if(is.na(aSiteKey) | aSiteKey == "facebook"){
-			next
-		}
+
 		
 		
 		dataItemList <- dataids[dataids[["site_key"]]==aSiteKey,] 
@@ -176,10 +203,6 @@ for (i in 1:length(subjects[["subject_key"]])) {  ### loop over docs  i <- 14  j
 		
 		profilesForSite <- siteList[siteList$site_key == aSiteKey,]
 		
-		
-		
-		
-
 		siteFirstChar <- substr(aSiteKey,1,1)
 		debug(paste0("First Char of aSiteKey:  ", siteFirstChar))
 		
@@ -188,9 +211,28 @@ for (i in 1:length(subjects[["subject_key"]])) {  ### loop over docs  i <- 14  j
 
 		debug(paste0("<-------  BEGIN PROCESSING PROFILES FOR SUBJECT/SITE (", aSubjKey, ", ", aSiteKey, ") ---------->"))
 		for (j in 1:nrow(profilesForSite)) {   ### Loop over sites j <- 1
-			
 			partialURL <- profilesForSite[j,"site_subject_ident"]
-			if(is.na(partialURL) | partialURL == ""){
+			if(aSiteKey == "facebook"){
+				profileReport <- rbind(profileReport, 
+					data.frame(
+						subject=c(aSubjKey),
+						site= c(aSiteKey), 
+						ident=c(partialURL), 
+						status= c("Facebook profiles are skipped at this time")
+					)
+				)
+				next
+			}
+		
+			if(is.null(partialURL) | is.na(partialURL) | partialURL == ""){
+				profileReport <- rbind(profileReport, 
+					data.frame(
+						subject=c(aSubjKey),
+						site= c(aSiteKey), 
+						ident=c(""), 
+						status= c("No Profile Supplied")
+					)
+				)					
 				next
 			}
 			aURL <- paste0(sites[sites[["site_key"]]==aSiteKey,"site_home"], profilesForSite[j,"site_subject_ident"])
@@ -199,10 +241,22 @@ for (i in 1:length(subjects[["subject_key"]])) {  ### loop over docs  i <- 14  j
 			subjectSiteProfileData <- matrix(data="", nrow=1, ncol=nrow(dataItemList))
 			colnames(subjectSiteProfileData) <- dataItemList[,"data_id"]
 			
-			
-			
+
 			if(aSiteKey != "google"){
-				html_doc <- read_html(aURL, verbose=FALSE)
+				html_doc <- tryCatch(read_html(aURL, verbose=FALSE), error= function(e){return (FALSE)})
+				
+				if(is.logical(html_doc)){
+					profileReport <- rbind(profileReport, 
+						data.frame(
+							subject=c(aSubjKey),
+							site= c(aSiteKey), 
+							ident=c(partialURL), 
+							status= c("Profile Does Not Exist")
+						)
+					)					
+					next
+				}
+			
 			
 			
 				##debug("BEGIN DataItemList LOOP")  
@@ -212,17 +266,20 @@ for (i in 1:length(subjects[["subject_key"]])) {  ### loop over docs  i <- 14  j
 					dataItemXPath <- dataItemList[k,"xpath"]
 					dataItemElementId <- dataItemList[k,"element_id"]
 					if (dataItemElement == "exist") {
+						debug("Existance:")
 						subjectSiteProfileData[1,dataItemName] <- getExistance(html_doc, xp=dataItemXPath)
 						debug(paste0("EXIST:  ", dataItemName, ":"))
 						debug(subjectSiteProfileData[1,dataItemName])
 	
 					}
 					if (dataItemElement == "text") {
+						debug("Text:")
 						subjectSiteProfileData[1,dataItemName] <- getTextContent(html_doc, xp=dataItemXPath)
 						debug(paste0("TEXT:  ", dataItemName, ":"))
 						debug(subjectSiteProfileData[1,dataItemName])					
 					}
 					if (dataItemElement == "attribute") {
+						debug("Attribute:")
 						val <- getAttributeValue(html_doc, xp=dataItemXPath, element_id=dataItemElementId)
 						if(is.na(val)){
 							val <- 0
@@ -418,6 +475,7 @@ for (i in 1:length(subjects[["subject_key"]])) {  ### loop over docs  i <- 14  j
 				
 				debug("JSON URL:")
 				debug(jsonURL)
+				
 				googleJSON <- fromJSON(jsonURL)
 				
 				debug("GOOGLE JSON:")
@@ -455,6 +513,16 @@ for (i in 1:length(subjects[["subject_key"]])) {  ### loop over docs  i <- 14  j
 						
 					
 					}
+				}else{
+					profileReport <- rbind(profileReport, 
+						data.frame(
+							subject=c(aSubjKey),
+							site= c(aSiteKey), 
+							ident=c(partialURL), 
+							status= c("Failed")
+						)
+					)
+					next
 				}
 			}			
 			
@@ -469,6 +537,17 @@ for (i in 1:length(subjects[["subject_key"]])) {  ### loop over docs  i <- 14  j
 			subjectSiteData <- rbind(subjectSiteData,subjectSiteProfileData)   
 			 
 			debug(paste0("<-----  END PROFILE LOOP (subject: ",i," site: ", aSubjKey, " profile-num: ", j, " url: ", aURL, ")  ----->"))
+			
+			
+			profileReport <- rbind(profileReport, 
+				data.frame(
+					subject=c(aSubjKey),
+					site= c(aSiteKey), 
+					ident=c(partialURL), 
+					status= c("OK")
+				)
+			)
+			
 		}
 		debug(paste0("<-------  END PROCESSING PROFILES FOR SUBJECT/SITE (", aSubjKey, ", ", aSiteKey, ") ---------->"))
 	   
@@ -556,6 +635,11 @@ for (i in 1:length(subjects[["subject_key"]])) {  ### loop over docs  i <- 14  j
 	results <- rbind(results, temp)
 	debug(paste0("<---------  END SUBJECT LOOP (",i,": ", aSubjKey, ")  --------->"))
 }
+
+debug("PROFILE REPORT")
+debug(profileReport)
+
+
 ### Write results to a CSV spreadsheet
 ### filename <- paste0("result", format(Sys.time(), format="%Y%m%d"), ".csv")
 filename <- paste0("scrape_results-", format(Sys.time(), format="%Y%m%d-%H%M%S"), ".csv")
@@ -566,7 +650,14 @@ write.table(results, file=filename, quote = TRUE, sep = ",", row.names = FALSE, 
 reviewfilename <- paste0("scrape_results-review-text-", format(Sys.time(), format="%Y%m%d-%H%M%S"), ".csv")
 write.csv(masterReviewData, file = reviewfilename, row.names=FALSE)
 
+
+write.csv(profileReport, file = "profileReport.csv", row.names=FALSE)
+
 print(paste0(filename,"~",reviewfilename))
+
+
+
+
 
 
 ##debug("MASTER REVIEW INFORMATION:")
