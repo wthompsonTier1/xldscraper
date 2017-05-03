@@ -131,7 +131,9 @@
 							$this->addToCsv($ssi_fp, $subject, "yelp", $profile);	
 					  	}
 						foreach($subject['google'] as $profile){
-							$this->addToCsv($ssi_fp, $subject, "google", $profile);	
+							/*  only add the place_id portion of profile string */
+							//error_log("PLACE_ID: ".explode("place_id=", $profile)[1]);
+							$this->addToCsv($ssi_fp, $subject, "google", trim(explode("place_id=", $profile)[1]));	
 					  	}
 						foreach($subject['facebook'] as $profile){
 							$this->addToCsv($ssi_fp, $subject, "facebook", $profile);	

@@ -465,10 +465,11 @@ for (i in 1:length(subjects[["subject_key"]])) {  ### loop over docs  i <- 14  j
 				#searchReturnObj <- fromJSON(paste0(site_url, returnObj$additional_search_params)
 				
 				debug("GOOGLE SPECIAL CASE DATA:")
-				debug(aURL)
+				debug(partialURL)
 				
-				regexMatch <- gregexpr("place_id",aURL)
-				place_id <- substr(aURL, regexMatch[[1]][1] + 9,nchar(aURL))
+				#regexMatch <- gregexpr("place_id",aURL)
+				#place_id <- substr(aURL, regexMatch[[1]][1] + 9,nchar(aURL))
+				place_id <- partialURL
 
 				## Get the JSON for the place_id
 				jsonURL <- paste0("https://maps.googleapis.com/maps/api/place/details/json?placeid=", place_id, "&key=", google_api_key)
