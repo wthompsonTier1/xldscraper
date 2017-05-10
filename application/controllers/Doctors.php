@@ -133,7 +133,11 @@
 						foreach($subject['google'] as $profile){
 							/*  only add the place_id portion of profile string */
 							//error_log("PLACE_ID: ".explode("place_id=", $profile)[1]);
-							$this->addToCsv($ssi_fp, $subject, "google", trim(explode("place_id=", $profile)[1]));	
+							$parts = explode("place_id=", $profile);
+							if(count($parts) == 2){
+								$profile = trim($parts[1]);
+							}
+							$this->addToCsv($ssi_fp, $subject, "google", $profile);	
 					  	}
 						foreach($subject['facebook'] as $profile){
 							$this->addToCsv($ssi_fp, $subject, "facebook", $profile);	
@@ -144,11 +148,19 @@
 				
 				  	/*   Kick off data scrape application  */				  	
 				  	$scrapeFileReturn = exec("Rscript r_applications/scrape_connectmd.r ".$obj->searchDir, $output);
+				  	
+				  	
 
-		      		echo json_encode($this->ScrapeResults_model->get_results($working_dir, $scrapeFileReturn));
+				  	
+
+		      		$scrapeResultsModel = $this->ScrapeResults_model->get_results($working_dir, $scrapeFileReturn);
+		      		
+		      		error_log("RETURN FROM DATA MODEL:");
+		      		error_log(json_encode($scrapeResultsModel));
+		      		
+		      		echo json_encode($scrapeResultsModel);
+		      		exit();
 		      	break;
-		      	
-		      	
 	        }
         }
         

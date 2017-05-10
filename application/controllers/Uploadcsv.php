@@ -79,7 +79,7 @@
 
 		                /*   Kick off data scrape application  */				  	
 						$scrapeFileReturn = exec("Rscript r_applications/scrape_connectmd.r ".$search_dir, $output);
-						$this->data['results'] = $this->ScrapeResults_model->get_results($working_dir, $scrapeFileReturn);
+						$this->data['results'] = json_encode($this->ScrapeResults_model->get_results($working_dir, $scrapeFileReturn));
 						$this->load->view("templates/header",$this->data);
 			            $this->load->view("templates/navigation",$this->data);
 			            $this->load->view("uploadcsv/upload_form_success",$this->data);

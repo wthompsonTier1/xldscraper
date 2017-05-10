@@ -81,6 +81,37 @@ hg_GetReviews <- function(doc) {
 }
 ### hg_GetReviews(html_doc)
 
+
+
+hg_getProfileJSON <- function(doc){
+	
+	####Find the appropriate script tag
+	scriptxpath <- "/html/body/div[2]/div[3]/script[contains(text(),'pageState.pes = ')]"
+	scriptnode <- html_nodes(doc,xpath=scriptxpath)
+	json <- "";
+	if(length(scriptnode) > 0){ 
+		scriptText <- html_text(scriptnode)
+		if(scriptText != ""){
+			################
+			##	Find the chunk of javascript that begins with "pageState.pes =" and
+			##	ends with "facilityLocations";  The goal is to convert the json structure
+			## 	that is in pageState.pes
+			#########
+			regexResult = regexec("pageState\\.pes =.*pageState\\.facilityLocations",scriptText)
+			jsonString <- substr(scriptText, regexResult[[1]][1], regexResult[[1]][1] + attr(regexResult[[1]], "match.length")[1]-1)
+			firstBracket <- gregexpr("\\{", jsonString)[[1]][1]
+			lastBracket <- rev(gregexpr("\\}", jsonString)[[1]])[1]
+			jsonString <- substr(jsonString,firstBracket,lastBracket)
+			json <- fromJSON(jsonString)
+		}
+	}
+	return (json)	
+}
+
+
+
+
+
 hg_GetRatingsReviews <- function(doc){
 	
 	ratingCounts <- c(0,0,0,0,0)
@@ -106,8 +137,8 @@ hg_GetRatingsReviews <- function(doc){
 			jsonString <- substr(jsonString,firstBracket,lastBracket)
 			json <- fromJSON(jsonString)
 			
-			#debug("JSON OBJECT:")
-			#debug(json)
+			debug("JSON OBJECT:")
+			debug(json)
 		
 			#debug("Aggregates:")
 			#debug(json$model$surveyDistribution$aggregates)

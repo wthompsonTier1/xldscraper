@@ -21,6 +21,21 @@ debug <- function(str){
 }
 
 
+#scrape_file_list:  used to hold names, titles, and descriptions of files used/created during this scrape
+scrape_file_list <- list()
+
+### addToFileList:  adds a list item to scrape_file_list containing 
+### 	filename, title, description
+addToFileList <- function(filename, title, description, type){
+	curList <- scrape_file_list
+	
+	curList[[length(curList)+1]] <- c(filename, title, description, type)
+	scrape_file_list <<- curList
+}
+
+
+
+
 {
 	if (require(xml2, quietly = TRUE)) 
     	0 
@@ -69,6 +84,13 @@ google_api_key <- "AIzaSyDWmQOAoJj3B6-IwCrgbNqEhCgVjzwilNU"
 setwd(paste0(getwd(), "/r_applications"))
 source("scrapeFunctions.r")
 
+
+#scrape_timestamp: used in naming any files created by scrape so we can easily group by date/time
+scrape_timestamp <- format(Sys.time(), format="%Y%m%d-%H%M%S")
+
+
+
+
 ###
 ### 	Get the search directory param
 ###
@@ -86,7 +108,9 @@ setwd(paste0("../r_working_dir/", searchDir))
 
 
 ###  Send output to scrape_debug.txt also 
-sink("scrape_debug.txt", append=FALSE, split=TRUE)
+filename <- paste0(scrape_timestamp, "-scrape_debug.txt")
+addToFileList(filename, "Scrape Debug Output", "Text file containing the entire debug output from the scrape routine.  Helps with tracking down errors.", "debug")
+sink(filename, append=FALSE, split=TRUE)
 debug(paste0("WORKING DIR:  ",getwd()))
 debug(paste0("SEARCH DIR:  ", searchDir))
 
@@ -95,13 +119,14 @@ debug(paste0("SEARCH DIR:  ", searchDir))
 
 
 sites <- read.csv("Sites.csv", header = TRUE, sep = ",", stringsAsFactors = FALSE)  ### site names and urls
-
+addToFileList("Sites.csv", "Sites.csv", "CSV file containing the details about all the sites included in the scrape routine.", "source")
 
 ###Load in subjects.csv file; fix column names; lowercase subject_key values
 subjects <- read.csv("Subjects.csv", header = TRUE, sep = ",", stringsAsFactors = FALSE)  ### subject names and ids
 names(subjects)[1] <- "subject_key"
 names(subjects)[2] <- "subject_name"
 subjects["subject_key"] <- lapply(subjects["subject_key"],function(x){tolower(x)})
+addToFileList("Subjects.csv", "Subjects.csv", "CSV file containing the subject data used in the scrape.", "source")
 
 
 ###Load in subject_site_identifier.csv file; fix column names; lowercase subject_key and site key values
@@ -111,7 +136,7 @@ names(subj_site_id)[2] <- "site_key"
 names(subj_site_id)[3] <- "site_subject_ident"
 subj_site_id["subject_key"] <- lapply(subj_site_id["subject_key"],function(x){tolower(x)})
 subj_site_id["site_key"] <- lapply(subj_site_id["site_key"],function(x){tolower(x)})
-
+addToFileList("Subject_Site_Identifiers.csv", "Subject_Site_Identifier.csv", "CSV file containing all profiles included in the scrape.", "source")
 
 
 
@@ -168,9 +193,7 @@ for (i in 1:length(subjects[["subject_key"]])) {  ### loop over docs  i <- 14  j
 	debug("Site List for Subject:  ")
 	debug(siteList)
 	
-	##temp <- unique(siteList$site_key)
-	##debug("Unique Site Keys:")
-	##debug(temp)
+
 	  
 	### Setup up one line data structure for a user.  This temp structure will
 	### get merged into the "results" data structure at the end of this loop   
@@ -180,8 +203,6 @@ for (i in 1:length(subjects[["subject_key"]])) {  ### loop over docs  i <- 14  j
 	
 	temp[1,"name"] <- aDocName 
 
-
-
 	uniqueSites <- unique(siteList$site_key)  
 	debug("Unique Sites:")
 	debug(uniqueSites)
@@ -189,10 +210,7 @@ for (i in 1:length(subjects[["subject_key"]])) {  ### loop over docs  i <- 14  j
 		aSiteKey <- uniqueSites[us]
 		debug("SITEKEY:  ")
 		debug(aSiteKey)
-		
-
-		
-		
+	
 		dataItemList <- dataids[dataids[["site_key"]]==aSiteKey,] 
 		
 		
@@ -212,6 +230,9 @@ for (i in 1:length(subjects[["subject_key"]])) {  ### loop over docs  i <- 14  j
 		debug(paste0("<-------  BEGIN PROCESSING PROFILES FOR SUBJECT/SITE (", aSubjKey, ", ", aSiteKey, ") ---------->"))
 		for (j in 1:nrow(profilesForSite)) {   ### Loop over sites j <- 1
 			partialURL <- profilesForSite[j,"site_subject_ident"]
+			
+			## If facebook profile:  add to profile report and skip
+			## until i can figure out how to get data
 			if(aSiteKey == "facebook"){
 				profileReport <- rbind(profileReport, 
 					data.frame(
@@ -349,35 +370,50 @@ for (i in 1:length(subjects[["subject_key"]])) {  ### loop over docs  i <- 14  j
 				}
 			}
 			if (aSiteKey == "healthgrades") {
+				jsonObj <- hg_getProfileJSON(html_doc)
+				#debug("HG JSON OBJECT:")
+				#debug(jsonObj)
+				
 				subjectSiteProfileData[1,"h_own_prof"] <- hg_GetOwned(html_doc)
-				if (subjectSiteProfileData[1,"h_num_ratings"] > 0) {
-					ratRev <- hg_GetRatingsReviews(html_doc)
-					
+				subjectSiteProfileData[1,"h_rating"] <- jsonObj$model$overall$actualScore
+				subjectSiteProfileData[1,"h_num_ratings"] <- jsonObj$model$overall$responseCount
+				subjectSiteProfileData[1,"h_num_reviews"] <- jsonObj$model$overall$reviewCount
 
-					ratingCounts <- ratRev$ratings
-					reviewInfo <- ratRev$reviews
-					
-					subjectSiteProfileData[1,"h_pos_ratings"] <- ratingCounts[4] +  ratingCounts[5] 
+
+				if(jsonObj$model$overall$responseCount > 0){
+					debug(jsonObj$model$surveyDistribution$aggregates)
+					ratingCounts <- jsonObj$model$surveyDistribution$aggregates[,"count"]
+					subjectSiteProfileData[1,"h_pos_ratings"] <- ratingCounts[1] +  ratingCounts[2] 
 					subjectSiteProfileData[1,"h_neut_ratings"] <- ratingCounts[3] 
-					subjectSiteProfileData[1,"h_neg_ratings"] <- ratingCounts[1] +  ratingCounts[2] 
-					subjectSiteProfileData[1,"h_pos_reviews"] <- nrow(reviewInfo[as.numeric(reviewInfo$rating) >= 4 ,])
-					subjectSiteProfileData[1,"h_neut_reviews"] <- nrow(reviewInfo[as.numeric(reviewInfo$rating) == 3 ,])
-					subjectSiteProfileData[1,"h_neg_reviews"] <- nrow(reviewInfo[as.numeric(reviewInfo$rating) < 3 ,])
-					subjectSiteProfileData[1,"h_neg_addressed"] <- ""
+					subjectSiteProfileData[1,"h_neg_ratings"] <- ratingCounts[4] +  ratingCounts[5] 				
+				}
+
+				
+				if(jsonObj$model$overall$reviewCount > 0){
 					
-					numReviewRows <- nrow(reviewInfo)
-		
+					
+					dates <- jsonObj$model$comments$results[,"submittedDate"]
+					dates <- as.character(as.Date(dates,"%B %d, %Y"))
+					ratings <- as.character(jsonObj$model$comments$results[,"overallScore"])
+					reviews <- jsonObj$model$comments$results[,"commentText"]	
+										
+					subjectSiteProfileData[1,"h_pos_reviews"] <- length(subset(ratings,ratings>=4))
+					subjectSiteProfileData[1,"h_neut_reviews"] <- length(subset(ratings,ratings==3))
+					subjectSiteProfileData[1,"h_neg_reviews"] <- length(subset(ratings,ratings<3))
+					subjectSiteProfileData[1,"h_neg_addressed"] <- ""						
+					
+					numReviewRows <- length(reviews)
 					if(numReviewRows > 0){
 						masterReviewData <- rbind(masterReviewData, 
 							data.frame(
 								subject=replicate(numReviewRows, aSubjKey), 
 								site=replicate(numReviewRows, aSiteKey), 
-								date=reviewInfo[,"date"], 
-								rating=reviewInfo[,"rating"], 
-								text=reviewInfo[,"text"]
+								date= dates, 
+								rating= ratings, 
+								text= reviews
 							)
 						)
-					}					
+					}
 				}
 			}
 	      
@@ -637,32 +673,59 @@ for (i in 1:length(subjects[["subject_key"]])) {  ### loop over docs  i <- 14  j
 	debug(paste0("<---------  END SUBJECT LOOP (",i,": ", aSubjKey, ")  --------->"))
 }
 
-debug("PROFILE REPORT")
-debug(profileReport)
+##  Write profile_status_report.csv
+filename <- paste0(scrape_timestamp, "-profile_status_report.csv")
+addToFileList(filename, "Profile Status Report", "CSV file containing a basic status report for each profile scraped.", "debug")
+write.csv(profileReport, file = filename , row.names=FALSE)
 
-
-### Write results to a CSV spreadsheet
-### filename <- paste0("result", format(Sys.time(), format="%Y%m%d"), ".csv")
-filename <- paste0("scrape_results-", format(Sys.time(), format="%Y%m%d-%H%M%S"), ".csv")
-###filename <- paste0("scrape_results.csv")
+## Write scrape_results.csv file
+filename <- paste0(scrape_timestamp, "-scrape_results.csv")
+addToFileList(filename, "Scrape Results", "CSV file containing scrape results data", "output")
 write.table(results, file=filename, quote = TRUE, sep = ",", row.names = FALSE, col.names = TRUE)
 
-
-reviewfilename <- paste0("scrape_results-review-text-", format(Sys.time(), format="%Y%m%d-%H%M%S"), ".csv")
+## Write scrape_results-review-text.csv
+reviewfilename <- paste0(scrape_timestamp, "-scrape_results_review_text.csv")
+addToFileList(reviewfilename, "Review Text:  All Subjects", "CSV file containing review text and ratings for ALL Subjects", "output")
 write.csv(masterReviewData, file = reviewfilename, row.names=FALSE)
 
+unique_subjects <- unique(masterReviewData$subject)
+for(i in 1:length(unique_subjects)){
+	subject_key <- unique_subjects[i]
+	filename <- paste0(scrape_timestamp, "-", subject_key, "-review_text.csv")
+	addToFileList(filename, paste0("Review Text: ", subject_key), paste0("CSV file containing review text for: ", subject_key), "output")
+	
+	subjectReviews <- masterReviewData[masterReviewData[["subject"]]==subject_key,]	
+	write.csv(subjectReviews, file = filename, row.names=FALSE)
+}
 
-write.csv(profileReport, file = "profileReport.csv", row.names=FALSE)
-
-print(paste0(filename,"~",reviewfilename))
 
 
 
 
 
 
-##debug("MASTER REVIEW INFORMATION:")
-##debug(masterReviewData)
+### Create the output file list file
+outputFile <- paste0(scrape_timestamp, "-output_file_list.txt")
+for (i in 1:length(scrape_file_list)) { 
+	cat(paste(scrape_file_list[[i]], collapse="~"), file = outputFile, append=TRUE, sep="\n")
+}
+
+
+##  Write the name of the outputFileList file
+cat(outputFile)
+
+
+
+#debug("Test:")
+#debug(masterReviewData)
+#debug(unique(masterReviewData$subject))
+#debug(length(unique(masterReviewData$subject)))
+
+
+### create data frame to collect reviews information for the subject
+#subjectReviewData <- matrix(data="", nrow=0, ncol = 5)
+#colnames(subjectReviewData) <- c("subject", "site", "date", "rating", "text")
+
 
 
 

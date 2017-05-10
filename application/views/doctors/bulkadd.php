@@ -280,10 +280,10 @@
 						console.log("Create CSV files");
 						var profile_data = [];
 						
-						$(".doctor-container").each(function(index){
+						$(".doctor-container").each(function(index, docObj){
 							var subject = {};
-							subject.search_item_num = $(".subject_item_num",this).text(); 
-							subject.search_term = $(".subject_search_term",this).text(); 
+							subject.search_item_num = $(".subject_item_num",docObj).text(); 
+							subject.search_term = $(".subject_search_term",docObj).text(); 
 							
 							subject.healthgrades = [];
 							subject.ratemds = [];
@@ -294,7 +294,7 @@
 							
 							
 							/*  get healthgrade profiles */
-							var nodes = $(".profile-row:visible .hidden-data .site_key:contains('healthgrades')",$(".doctor-container")[0]).parent().parent();
+							var nodes = $(".profile-row:visible .hidden-data .site_key:contains('healthgrades')",docObj).parent().parent();
 							if(nodes.length > 0 ){
 								nodes.each(function(index){
 									subject.healthgrades.push($(".hidden-data .url", this).text());
@@ -303,7 +303,7 @@
 								subject.healthgrades.push("");
 							}		
 							/*  get ratemds profiles */
-							var nodes = $(".profile-row:visible .hidden-data .site_key:contains('ratemds')",$(".doctor-container")[0]).parent().parent();
+							var nodes = $(".profile-row:visible .hidden-data .site_key:contains('ratemds')",docObj).parent().parent();
 							if(nodes.length > 0 ){
 								nodes.each(function(index){
 									subject.ratemds.push($(".hidden-data .url", this).text());
@@ -312,7 +312,7 @@
 								subject.ratemds.push("");
 							}
 							/*  get vitals profiles */
-							var nodes = $(".profile-row:visible .hidden-data .site_key:contains('vitals')",$(".doctor-container")[0]).parent().parent();
+							var nodes = $(".profile-row:visible .hidden-data .site_key:contains('vitals')",docObj).parent().parent();
 							if(nodes.length > 0 ){
 								nodes.each(function(index){
 									subject.vitals.push($(".hidden-data .url", this).text());
@@ -321,7 +321,7 @@
 								subject.vitals.push("");
 							}
 							/*  get yelp profiles */
-							var nodes = $(".profile-row:visible .hidden-data .site_key:contains('yelp')",$(".doctor-container")[0]).parent().parent();
+							var nodes = $(".profile-row:visible .hidden-data .site_key:contains('yelp')",docObj).parent().parent();
 							if(nodes.length > 0 ){
 								nodes.each(function(index){
 									subject.yelp.push($(".hidden-data .url", this).text());
@@ -330,7 +330,7 @@
 								subject.yelp.push("");
 							}
 							/*  get google profiles */
-							var nodes = $(".profile-row:visible .hidden-data .site_key:contains('google')",$(".doctor-container")[0]).parent().parent();
+							var nodes = $(".profile-row:visible .hidden-data .site_key:contains('google')",docObj).parent().parent();
 							if(nodes.length > 0 ){
 								nodes.each(function(index){
 									subject.google.push($(".hidden-data .url", this).text());
@@ -339,7 +339,7 @@
 								subject.google.push("");
 							}
 							/*  get facebook profiles */
-							var nodes = $(".profile-row:visible .hidden-data .site_key:contains('facebook')",$(".doctor-container")[0]).parent().parent();
+							var nodes = $(".profile-row:visible .hidden-data .site_key:contains('facebook')",docObj).parent().parent();
 							if(nodes.length > 0 ){
 								nodes.each(function(index){
 									subject.facebook.push($(".hidden-data .url", this).text());
@@ -355,8 +355,7 @@
 							profile_data.push(subject);
 						});
 						
-						console.log("PROFILE DATA TO SCRAPE:");
-						console.log(profile_data);
+
 						/*
 						var profileRows = $(".profile-row:visible");
 						
@@ -374,6 +373,7 @@
 						
 						
 						showSpinner();	
+						console.log("About to scrape xxx...");
 						$.ajax({
 							type: "POST",
 							url: "<?php base_url();?>ajax",
@@ -384,17 +384,39 @@
 								profiles: profile_data,
 								searchDir: _searchDir
 							},
-							success: function(data) {
-								
+							success: function(obj) {
+								console.log(obj);
 								var output = "<div class='container'>";
 								output += "<div class='row'>";
 								output += "<div class='col col-sm-12'>";
-								output += "<p>CSV Files:</p>";
+								output += "<p>"+obj.output_files_title+"</p>";
 								output += "<ul>"
-								$.each(data, function(i,file){
+								$.each(obj.output_files, function(i,file){
 									output += "<li><a href='"+file.file_location+"' target='csvFile'>"+file.title+"</a></li>"
 								});
 								output += "</ul></div></div></div>";
+								
+								output += "<div class='container'>";
+								output += "<div class='row'>";
+								output += "<div class='col col-sm-12'>";
+								output += "<p>"+obj.source_files_title+"</p>";
+								output += "<ul>"
+								$.each(obj.source_files, function(i,file){
+									output += "<li><a href='"+file.file_location+"' target='csvFile'>"+file.title+"</a></li>"
+								});
+								output += "</ul></div></div></div>";
+								
+								output += "<div class='container'>";
+								output += "<div class='row'>";
+								output += "<div class='col col-sm-12'>";
+								output += "<p>"+obj.debug_files_title+"</p>";
+								output += "<ul>"
+								$.each(obj.debug_files, function(i,file){
+									output += "<li><a href='"+file.file_location+"' target='csvFile'>"+file.title+"</a></li>"
+								});
+								output += "</ul></div></div></div>";
+								
+																
 								$("#results-content").html(output);
 							}
 						});	
