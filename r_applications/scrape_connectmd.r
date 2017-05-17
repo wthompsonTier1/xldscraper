@@ -70,6 +70,10 @@ if (! require(jsonlite, quietly = TRUE)){
 	library("jsonlite")
 }
 
+if (! require(httr, quietly = TRUE)){ 
+    install.packages("httr", repos='http://cran.us.r-project.org')
+	library("httr")
+}
 
 if (! require(anytime, quietly = TRUE)){ 
     install.packages("anytime", repos='http://cran.us.r-project.org')
@@ -381,38 +385,84 @@ for (i in 1:length(subjects[["subject_key"]])) {  ### loop over docs  i <- 14  j
 
 
 				if(jsonObj$model$overall$responseCount > 0){
-					debug(jsonObj$model$surveyDistribution$aggregates)
-					ratingCounts <- jsonObj$model$surveyDistribution$aggregates[,"count"]
-					subjectSiteProfileData[1,"h_pos_ratings"] <- ratingCounts[1] +  ratingCounts[2] 
-					subjectSiteProfileData[1,"h_neut_ratings"] <- ratingCounts[3] 
-					subjectSiteProfileData[1,"h_neg_ratings"] <- ratingCounts[4] +  ratingCounts[5] 				
+					if(!is.null(nrow(jsonObj$model$surveyDistribution$aggregates))){
+						ratingCounts <- jsonObj$model$surveyDistribution$aggregates[,"count"]
+						subjectSiteProfileData[1,"h_pos_ratings"] <- ratingCounts[1] +  ratingCounts[2] 
+						subjectSiteProfileData[1,"h_neut_ratings"] <- ratingCounts[3] 
+						subjectSiteProfileData[1,"h_neg_ratings"] <- ratingCounts[4] +  ratingCounts[5]
+					}else{
+						# If no distribution is provided, it seems the h_rating value is used for the total
+						# number of h_num_ratings
+						subjectSiteProfileData[1,"h_pos_ratings"] <- if(subjectSiteProfileData[1,"h_rating"] >= 4) subjectSiteProfileData[1,"h_num_ratings"] else 0
+						subjectSiteProfileData[1,"h_neut_ratings"] <- if(subjectSiteProfileData[1,"h_rating"] == 3) subjectSiteProfileData[1,"h_num_ratings"] else 0
+						subjectSiteProfileData[1,"h_neg_ratings"] <- if(subjectSiteProfileData[1,"h_rating"] < 3) subjectSiteProfileData[1,"h_num_ratings"] else 0				
+					}
 				}
 
-				
-				if(jsonObj$model$overall$reviewCount > 0){
-					
-					
-					dates <- jsonObj$model$comments$results[,"submittedDate"]
-					dates <- as.character(as.Date(dates,"%B %d, %Y"))
-					ratings <- as.character(jsonObj$model$comments$results[,"overallScore"])
-					reviews <- jsonObj$model$comments$results[,"commentText"]	
-										
-					subjectSiteProfileData[1,"h_pos_reviews"] <- length(subset(ratings,ratings>=4))
-					subjectSiteProfileData[1,"h_neut_reviews"] <- length(subset(ratings,ratings==3))
-					subjectSiteProfileData[1,"h_neg_reviews"] <- length(subset(ratings,ratings<3))
-					subjectSiteProfileData[1,"h_neg_addressed"] <- ""						
-					
-					numReviewRows <- length(reviews)
-					if(numReviewRows > 0){
-						masterReviewData <- rbind(masterReviewData, 
-							data.frame(
-								subject=replicate(numReviewRows, aSubjKey), 
-								site=replicate(numReviewRows, aSiteKey), 
-								date= dates, 
-								rating= ratings, 
-								text= reviews
+				reviewCount <- jsonObj$model$overall$reviewCount
+				if(reviewCount > 0){
+					if(reviewCount <= 50){
+						dates <- jsonObj$model$comments$results[,"submittedDate"]
+						dates <- as.character(as.Date(dates,"%B %d, %Y"))
+						ratings <- as.character(jsonObj$model$comments$results[,"overallScore"])
+						reviews <- jsonObj$model$comments$results[,"commentText"]	
+											
+						subjectSiteProfileData[1,"h_pos_reviews"] <- length(subset(ratings,ratings>=4))
+						subjectSiteProfileData[1,"h_neut_reviews"] <- length(subset(ratings,ratings==3))
+						subjectSiteProfileData[1,"h_neg_reviews"] <- length(subset(ratings,ratings<3))
+						subjectSiteProfileData[1,"h_neg_addressed"] <- ""						
+						
+						numReviewRows <- length(reviews)
+						if(numReviewRows > 0){
+							masterReviewData <- rbind(masterReviewData, 
+								data.frame(
+									subject=replicate(numReviewRows, aSubjKey), 
+									site=replicate(numReviewRows, aSiteKey), 
+									date= dates, 
+									rating= ratings, 
+									text= reviews
+								)
 							)
-						)
+						}
+					}else{
+						### More than 50 reviews requires another call to get the json
+						opString = partialURL
+						if(regexpr("\\?",partialURL)[[1]][1] > -1){
+							opString <- substr(opString,1,regexpr("\\?",opString)[[1]][1]-1)
+						}
+
+						profileCodeParts <- strsplit(opString,"-")
+						profileCode <- profileCodeParts[[1]][length(profileCodeParts[[1]])]
+			
+						
+						commentURL <- "https://www.healthgrades.com/uisvc/v1_0/pesui/api/comments"
+						body <- list(pwid = profileCode, currentPage = 1, perPage= reviewCount, sortOption = 1)
+						response <- POST(commentURL, body=body, encode="form")
+						json <- fromJSON(content(response, "text"))
+						
+						
+						dates <- json$results[,"submittedDate"]
+						dates <- as.character(as.Date(dates,"%B %d, %Y"))
+						ratings <- as.character(json$results[,"overallScore"])
+						reviews <- json$results[,"commentText"]	
+											
+						subjectSiteProfileData[1,"h_pos_reviews"] <- length(subset(ratings,ratings>=4))
+						subjectSiteProfileData[1,"h_neut_reviews"] <- length(subset(ratings,ratings==3))
+						subjectSiteProfileData[1,"h_neg_reviews"] <- length(subset(ratings,ratings<3))
+						subjectSiteProfileData[1,"h_neg_addressed"] <- ""						
+						
+						numReviewRows <- length(reviews)
+						if(numReviewRows > 0){
+							masterReviewData <- rbind(masterReviewData, 
+								data.frame(
+									subject=replicate(numReviewRows, aSubjKey), 
+									site=replicate(numReviewRows, aSiteKey), 
+									date= dates, 
+									rating= ratings, 
+									text= reviews
+								)
+							)
+						}												
 					}
 				}
 			}
@@ -688,21 +738,19 @@ reviewfilename <- paste0(scrape_timestamp, "-scrape_results_review_text.csv")
 addToFileList(reviewfilename, "Review Text:  All Subjects", "CSV file containing review text and ratings for ALL Subjects", "output")
 write.csv(masterReviewData, file = reviewfilename, row.names=FALSE)
 
-unique_subjects <- unique(masterReviewData$subject)
-for(i in 1:length(unique_subjects)){
-	subject_key <- unique_subjects[i]
-	filename <- paste0(scrape_timestamp, "-", subject_key, "-review_text.csv")
-	addToFileList(filename, paste0("Review Text: ", subject_key), paste0("CSV file containing review text for: ", subject_key), "output")
-	
-	subjectReviews <- masterReviewData[masterReviewData[["subject"]]==subject_key,]	
-	write.csv(subjectReviews, file = filename, row.names=FALSE)
+debug("Number of rows in masterReviewData")
+debug(nrow(masterReviewData))
+
+if(nrow(masterReviewData) > 0){
+	unique_subjects <- unique(masterReviewData$subject)
+	for(i in 1:length(unique_subjects)){
+		subject_key <- unique_subjects[i]
+		filename <- paste0(scrape_timestamp, "-", subject_key, "-review_text.csv")
+		addToFileList(filename, paste0("Review Text: ", subject_key), paste0("CSV file containing review text for: ", subject_key), "output")
+		subjectReviews <- masterReviewData[masterReviewData[["subject"]]==subject_key,]	
+		write.csv(subjectReviews, file = filename, row.names=FALSE)
+	}
 }
-
-
-
-
-
-
 
 ### Create the output file list file
 outputFile <- paste0(scrape_timestamp, "-output_file_list.txt")
