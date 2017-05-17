@@ -334,7 +334,7 @@ for (i in 1:length(subjects[["subject_key"]])) {  ### loop over docs  i <- 14  j
 						data.frame(
 							subject=replicate(numReviewRows, aSubjKey), 
 							site=replicate(numReviewRows, aSiteKey), 
-							date=reviews[,"date"], 
+							date= reviews[,"date"], 
 							rating=reviews[,"rating"], 
 							text=reviews[,"text"]
 						)
@@ -543,7 +543,7 @@ for (i in 1:length(subjects[["subject_key"]])) {  ### loop over docs  i <- 14  j
 								subject=replicate(nrow(reviews), aSubjKey), 
 								site=replicate(nrow(reviews), aSiteKey), 
 								date=sapply(reviews[,"time"], function(x) as.character(anydate(x))), 
-								rating=reviews[,"rating"], 
+								rating=as.character(reviews[,"rating"]), 
 								text=reviews[,"text"]
 							)
 						)						

@@ -1,3 +1,6 @@
+	<link rel="stylesheet" href="https://ajax.googleapis.com/ajax/libs/jqueryui/1.12.1/themes/smoothness/jquery-ui.css">
+	<script src="https://ajax.googleapis.com/ajax/libs/jqueryui/1.12.1/jquery-ui.min.js"></script>   
+   
     <style>	    
 	    #form-section textarea {
 		    height: 200px;
@@ -38,6 +41,39 @@
 	    }
 	    
 	    .hidden-data {display: none}
+	    
+	    
+	    
+	    #previous-scrapes{
+			height: 300px;
+			overflow: auto;    
+		    
+	    }
+	    
+	    .static-scrape-name{
+			background-color:rgba(238, 10, 10, 0.5);
+			margin-bottom: 4px;
+			padding: 5px;
+	    }
+	    .edit-scrape-name{
+		    display:none;
+	    }
+	    
+	    .edit-scrape-name input{
+		    width: 100%;
+		    background-color:  gray;
+		    padding:4px;
+	    }
+	    
+	    .google-profile-link span {
+		    color: #18BC9C;
+		    font-size: 20px;
+		    cursor: pointer;
+	    }
+	    #mapContainer{
+		    width: 450px;
+		    height: 450px;
+	    }
 	</style>
 	<script>
 		var _sites;
@@ -45,6 +81,13 @@
 		var _searchDir;
 		
 		$(function(){
+			/*  Get listing of previous searches/scrapes and list */
+	
+			
+			/*  Previous Scrapes Feature:  in progress */
+			//_getPreviousScrapes();
+		
+			
 			$("#btn-find-doctors").click(function(){
 				_clearFormErrors();
 				if(_validateForm()){
@@ -52,6 +95,81 @@
 				}
 			});		
 		});
+		
+		function _getPreviousScrapes(){
+			$.ajax({
+				type: "POST",
+				url: "<?php base_url();?>ajax",
+				dataType: 'json',
+				data: { 
+					mode:'get_previous_scrapes',
+				},
+				success: function(prev_scrapes) {
+					var str = "";
+					$.each(prev_scrapes, function(i, scrape){
+						//console.log("Char At 0:  '"+scrape.charAt(0)+"'");
+						if(scrape.charAt(0) != "."){
+							str += "<div class='scrape-container'>";
+							str += "<div class='static-scrape-name'>"+scrape+"</div>";
+							str += "<div class='edit-scrape-name'><input name=newValue type=text/><input type=hidden name=previousValue value='"+scrape+"'/></div>";
+							str += "</div>";
+						}
+					});
+					$("#previous-scrapes").html(str);
+					
+					
+					$(".edit-scrape-name input").blur(function(){
+						var scrapeObj = $(this).parent().parent();
+						var editObj = $(this).parent();
+						var staticObj = $(".static-scrape-name",$(scrapeObj));
+						
+						var newval = $.trim($(this).val());
+						var oldval = $("input[name='previousValue']",$(editObj)).val();
+						
+						if(newval == ""){
+							newval == oldval;
+						}
+						
+						$(editObj).hide();
+						$(this).val("");
+						$(staticObj).html(newval);
+						$(staticObj).show();
+						console.log("New:  "+newval);
+						console.log("OLD:  "+oldval);
+						
+						
+						if(newval != oldval){
+							/* need to rename the directory  and refresh */
+							$.ajax({
+								type: "POST",
+								url: "<?php base_url();?>ajax",
+								data: { 
+									mode:'rename_directory',
+									oldval: oldval,
+									newval: newval
+								},
+								success: function(returnVal) {
+									if(returnVal == "FAIL"){
+										alert("Directory Already Exists.")										
+										$(staticObj).html(oldval);
+									}else{
+										$("input[name='previousValue']",editObj).val(newval);
+									}
+								}
+							});
+						}
+						
+					});
+					
+					$(".static-scrape-name").dblclick(function(){
+						$(".edit-scrape-name input[name='newValue']",$(this).parent()).val($(this).text());
+						$(this).hide();
+						$(".edit-scrape-name",$(this).parent()).show();						
+						$(".edit-scrape-name input",$(this).parent()).focus();
+					});
+				}
+			});				
+		}
 		
 		function showSpinner(){
 			$("#results-content").html('<div class="col-sm-12 text-center"><p>This may take a few minutes...</p></div><div class="col-sm-12 text-center"><i class="fa fa-spinner fa-spin fa-5x spinner"></i></div>');
@@ -132,7 +250,12 @@
 										//	output += "<img src='"+profile.profileImg+"'/>"
 										//}
 										output += "<p>"+profile.profileSpecialty+"</p>";
-										output += "<p> <a href='"+siteinfo.site_home+profile.profileUrl+"' target='profileWin'> Profile Link </a></p>";
+										
+										if(site_result.site_key == "google"){
+											output += "<p><div class='google-profile-link'><span>Profile Link</span><input type=hidden value='"+profile.profileUrl+"'/></div></p>";
+										}else{
+											output += "<p> <a href='"+siteinfo.site_home+profile.profileUrl+"' target='profileWin'> Profile Link </a></p>";
+										}		
 
 									output += "</div>";	
 									output += "<div class='col col-sm-1'></div>";
@@ -222,6 +345,23 @@
 			return formIsValid;
 		}
 		
+		function initMap(){
+			
+		}
+		
+		function displayMap(data){
+			/*
+			console.log("PLACE DATA:");
+			console.log(data);
+			var mapProp= {
+				center: data.result.geometry.location,
+				zoom:5
+			};
+			mapDialog.dialog("open");
+			var map=new google.maps.Map(document.getElementById("mapContainer"),mapProp);
+			*/
+			window.open(data.result.url, "profileWin");			
+		}
 		
 		
 		function _submitData(){
@@ -266,6 +406,26 @@
 					output += "<div class='text-center'>"+getCSVButton()+"</div>";
 
 					$("#results-content").html(output);
+					/*  Google Profile Links */
+					
+					$(".google-profile-link").click(function(){
+						var linkdata = $("input",$(this)).val();
+						var place_id = linkdata.substr(linkdata.indexOf("place_id=")+9);
+						console.log(linkdata);
+						console.log(place_id);
+						$.ajax({
+							type: "POST",
+							url: "<?php base_url();?>ajax",
+							dataType: 'json',
+							data: { 
+								mode:'get-google-place',
+								place_id:  place_id
+							},
+							success: function(data){
+								displayMap(data);
+							}
+						});
+					});
 					
 					$(".total-profiles-found").html(_processedResults.profileCount);
 					$(".total-to-csv").html(_processedResults.profileCount);
@@ -418,6 +578,10 @@
 								
 																
 								$("#results-content").html(output);
+								
+								
+		
+								
 							}
 						});	
 					});
@@ -434,11 +598,18 @@
                 </div>
             </div>
         </div>
-    </header>                
+    </header> 
 	<section id="form-section">
 		<div class="container">
 			<div class="row">
-				<div class="col-xs-6 col-xs-offset-3">
+				<!--  Previous Scrapes Feature -->
+				<!--
+			    <div id="previous-scrapes" class="col-xs-7">
+				    
+			    </div> 				
+				-->
+				<div class="col-xs-3"></div>
+				<div class="col-xs-6">
 					<?php echo form_open(); ?>
 						<div id="location-form-group" class="form-group">
 						    <label for="location">Location</label>
@@ -457,16 +628,15 @@
 			</div>
 		</div>
 	</section>
-	
+		
 	<section id="results-section">
 		<div class="container">
 			<div class="row">
 					<div id="results-content" class="col-xs-12"></div>	
 			</div>	
 		</div>			
-		
 	</section>
-		
+	
 		
 	
 	

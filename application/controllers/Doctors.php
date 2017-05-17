@@ -48,6 +48,29 @@
         public function ajax(){
 	        $data = $this->input->post();
 	        switch($data['mode']){
+		        case 'get-google-place':
+		        	$url = "https://maps.googleapis.com/maps/api/place/details/json?placeid=".$data['place_id']."&key=AIzaSyDWmQOAoJj3B6-IwCrgbNqEhCgVjzwilNU";
+		        	error_log("PLACE_ID URL:  ".$url);
+		        	$json = file_get_contents($url);
+					//$obj = json_decode($json);
+		        	
+		        	echo $json;
+		        	break;
+		        case 'rename_directory':
+		        	if(file_exists("r_working_dir/".$data['newval'])){
+		        		echo "FAIL";
+		        	}else{
+			        	if(rename("r_working_dir/".$data['oldval'], "r_working_dir/".$data['newval'])){
+				        	echo "SUCCESS";
+			        	}else{
+				        	echo "FAIL";
+			        	}
+		        	}
+		        	break;
+		    	case 'get_previous_scrapes':
+		    		$scrape_dirs = scandir("r_working_dir");
+		    		echo(json_encode($scrape_dirs));
+		    		break;
 		      case 'search_doctors':
 		      		$searchDir = "search_".date("Ymd-His");
 			  		$inputFile = "r_working_dir/".$searchDir."/search.txt";
@@ -154,9 +177,7 @@
 				  	
 
 		      		$scrapeResultsModel = $this->ScrapeResults_model->get_results($working_dir, $scrapeFileReturn);
-		      		
-		      		error_log("RETURN FROM DATA MODEL:");
-		      		error_log(json_encode($scrapeResultsModel));
+	
 		      		
 		      		echo json_encode($scrapeResultsModel);
 		      		exit();
