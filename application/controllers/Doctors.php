@@ -163,7 +163,12 @@
 							$this->addToCsv($ssi_fp, $subject, "google", $profile);	
 					  	}
 						foreach($subject['facebook'] as $profile){
-							$this->addToCsv($ssi_fp, $subject, "facebook", $profile);	
+							/*  only add the pageid portion of profile string */
+							$parts = explode("pageid=", $profile);
+							if(count($parts) == 2){
+								$profile = trim($parts[1]);
+							}
+							$this->addToCsv($ssi_fp, $subject, "facebook", $profile);		
 					  	}		
 					}
 					fclose($s_fp);

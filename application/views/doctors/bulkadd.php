@@ -254,7 +254,7 @@
 										if(site_result.site_key == "google"){
 											output += "<p><div class='google-profile-link'><span>Profile Link</span><input type=hidden value='"+profile.profileUrl+"'/></div></p>";
 										}else{
-											output += "<p> <a href='"+siteinfo.site_home+profile.profileUrl+"' target='profileWin'> Profile Link </a></p>";
+											output += "<p> <a href='"+siteinfo.site_home+profile.profileUrl+"' target='_blank'> Profile Link </a></p>";
 										}		
 
 									output += "</div>";	
@@ -360,7 +360,7 @@
 			mapDialog.dialog("open");
 			var map=new google.maps.Map(document.getElementById("mapContainer"),mapProp);
 			*/
-			window.open(data.result.url, "profileWin");			
+			window.open(data.result.url, "_blank");			
 		}
 		
 		

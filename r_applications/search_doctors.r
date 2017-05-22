@@ -25,7 +25,34 @@
 ###		 
 ###		
 ###
-####################################################	
+####################################################
+
+	getStateFull <- function(twoLetterCode){
+		stateInfo<-data.frame(
+			state=c("AK", "AL", "AR", "AZ", "CA", "CO", "CT", "DC", "DE", "FL", "GA",
+			                 "HI", "IA", "ID", "IL", "IN", "KS", "KY", "LA", "MA", "MD", "ME",
+			                 "MI", "MN", "MO", "MS",  "MT", "NC", "ND", "NE", "NH", "NJ", "NM",
+			                 "NV", "NY", "OH", "OK", "OR", "PA", "PR", "RI", "SC", "SD", "TN",
+			                 "TX", "UT", "VA", "VT", "WA", "WI", "WV", "WY"),
+			full=c("alaska","alabama","arkansas","arizona","california","colorado",
+			               "connecticut","district of columbia","delaware","florida","georgia",
+			               "hawaii","iowa","idaho","illinois","indiana","kansas","kentucky",
+			               "louisiana","massachusetts","maryland","maine","michigan","minnesota",
+			               "missouri","mississippi","montana","north carolina","north dakota",
+			               "nebraska","new hampshire","new jersey","new mexico","nevada",
+			               "new york","ohio","oklahoma","oregon","pennsylvania","puerto rico",
+			               "rhode island","south carolina","south dakota","tennessee","texas",
+			               "utah","virginia","vermont","washington","wisconsin",
+			               "west virginia","wyoming")
+		)
+		
+		return (as.character(stateInfo[which(stateInfo$state==toupper(twoLetterCode)),"full"]))
+	}
+
+
+
+
+
 	search_site <- function(searchItem, siteinfo){
 		location <- searchItem$location
 		search_term <- searchItem$search_term
@@ -342,22 +369,85 @@
 				###		
 				###
 
+				# sample URL:  
+				#https://www.facebook.com/public?query=st+elizabeth+healthcare+edgewood%2C+ky&type=pages
+				
+				
+				
+				
+				debug("Facebook Location:")
+				debug(location)
+			
+				#  if the location has a comma, split the location and trim both parts
+				#  if the second part is 2 characters, then call the getStateFull() function
+				#  if not, then use the location as is
+				location_parts <- tolower(trimws(strsplit(location, ",")[[1]]))
+				debug("location parts")
+				debug(location_parts)
+				if(length(location_parts) == 2 & nchar(location_parts[2]) == 2){
+					locationStr <- paste0(location_parts[1],", ",getStateFull(location_parts[2]))
+				}else{
+					locationStr <- location
+				}
+				
+				searchTermStr <- gsub(" ", "+", trimws(search_term))
+				
+				returnObj$additional_search_params <- gsub(" ","+",paste0("query=",trimws(search_term)," ",locationStr,"&type=pages"))
+				 
+				fb_search_url <-paste0(site_url, returnObj$additional_search_params)
+		
+				
 				profile_names <- c()
 				profile_urls <- c()
 				profile_imgs <- c()
-				profile_specialties <- c()		
-			
+				profile_specialties <- c()				
+				
+				
+				htmldoc <- getHTML(paste0(site_url, returnObj$additional_search_params))
+				
+				profile_names <- html_text(html_nodes(htmldoc,xpath='//*[contains(@class,"detailedsearch_result")]/div[1]/div[1]/div[1]/div[1]/a'))
+				debug("Profile Names:")
+				debug(profile_names)
+				debug(length(profile_names))
+				
+				profile_urls <- html_attr(html_nodes(htmldoc,xpath='//*[contains(@class,"detailedsearch_result")]/div[1]/a[1]'),'href')
+				profile_urls <- gsub("https://www.facebook.com", "", profile_urls)
+
+				
+				onclicks <- html_attr(html_nodes(htmldoc,xpath='//*[contains(@class,"detailedsearch_result")]/div[1]/a[1]'),'onclick')
+				
+				onclicks <- substr(onclicks,regexpr('id":',onclicks)[1] + 4, nchar(onclicks))
+				onclicks <- substr(onclicks,1,regexpr(",",onclicks)[1] -1)
+				
+				profile_urls <- paste0(profile_urls,"?pageid=",onclicks)
+				
+				debug("Profile URLS")			
+				debug(profile_urls)
+				
+				
+				
+				#skipping for now:  come back when we know it is able to scrape facebook
+				profile_specialties <- html_text(html_nodes(htmldoc,xpath='//*[contains(@class,"detailedsearch_result")]/div[1]/div[1]/div[1]/div[2]/div'))
+				#profile_specialties <- sapply(profile_specialties,function(x) gsub(" "," - ",x))
+
+				
+				
+				
+				#debug(profile_specialties)
+				
+				#profile_imgs <- gsub("//","",html_attr(html_nodes(htmldoc,xpath='//*[@id="doctor-list"]/div/div/img'),'src'))
+				
+				#profile_specialties <- html_text(html_nodes(htmldoc,xpath='//*[@id="doctor-list"]/div/div/div/a'))				
+				
 				returnObj$data <- data.frame(
 					profileName = profile_names,
 					profileSpecialty = profile_specialties,
 					profileUrl  = profile_urls,
-					profileImg  = profile_imgs,
+					profileImg  = replicate(length(profile_names), ""),
 					stringsAsFactors = FALSE
-				)	        
-			}			
+				)
+			}
 		)
-		
-
 		
 		return(
 			returnObj
