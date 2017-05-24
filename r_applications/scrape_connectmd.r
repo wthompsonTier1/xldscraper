@@ -374,95 +374,214 @@ for (i in 1:length(subjects[["subject_key"]])) {  ### loop over docs  i <- 14  j
 				}
 			}
 			if (aSiteKey == "healthgrades") {
-				jsonObj <- hg_getProfileJSON(html_doc)
-				#debug("HG JSON OBJECT:")
-				#debug(jsonObj)
-				
-				subjectSiteProfileData[1,"h_own_prof"] <- hg_GetOwned(html_doc)
-				subjectSiteProfileData[1,"h_rating"] <- jsonObj$model$overall$actualScore
-				subjectSiteProfileData[1,"h_num_ratings"] <- jsonObj$model$overall$responseCount
-				subjectSiteProfileData[1,"h_num_reviews"] <- jsonObj$model$overall$reviewCount
-
-
-				if(jsonObj$model$overall$responseCount > 0){
-					if(!is.null(nrow(jsonObj$model$surveyDistribution$aggregates))){
-						ratingCounts <- jsonObj$model$surveyDistribution$aggregates[,"count"]
-						subjectSiteProfileData[1,"h_pos_ratings"] <- ratingCounts[1] +  ratingCounts[2] 
-						subjectSiteProfileData[1,"h_neut_ratings"] <- ratingCounts[3] 
-						subjectSiteProfileData[1,"h_neg_ratings"] <- ratingCounts[4] +  ratingCounts[5]
-					}else{
-						# If no distribution is provided, it seems the h_rating value is used for the total
-						# number of h_num_ratings
-						subjectSiteProfileData[1,"h_pos_ratings"] <- if(subjectSiteProfileData[1,"h_rating"] >= 4) subjectSiteProfileData[1,"h_num_ratings"] else 0
-						subjectSiteProfileData[1,"h_neut_ratings"] <- if(subjectSiteProfileData[1,"h_rating"] == 3) subjectSiteProfileData[1,"h_num_ratings"] else 0
-						subjectSiteProfileData[1,"h_neg_ratings"] <- if(subjectSiteProfileData[1,"h_rating"] < 3) subjectSiteProfileData[1,"h_num_ratings"] else 0				
+				if(grepl("group-directory", partialURL)){
+					scriptNodes <- html_nodes(html_doc, xpath="//*/script")
+					dataNode <- ""
+					for (i in 1:length(scriptNodes)){ 
+						if(grepl("HGEppUi.Model",scriptNodes[i])){
+							dataNode <- scriptNodes[i]
+							break
+						}
 					}
-				}
 
-				reviewCount <- jsonObj$model$overall$reviewCount
-				if(reviewCount > 0){
-					if(reviewCount <= 50){
-						dates <- jsonObj$model$comments$results[,"submittedDate"]
-						dates <- as.character(as.Date(dates,"%B %d, %Y"))
-						ratings <- as.character(jsonObj$model$comments$results[,"overallScore"])
-						reviews <- jsonObj$model$comments$results[,"commentText"]	
-											
-						subjectSiteProfileData[1,"h_pos_reviews"] <- length(subset(ratings,ratings>=4))
-						subjectSiteProfileData[1,"h_neut_reviews"] <- length(subset(ratings,ratings==3))
-						subjectSiteProfileData[1,"h_neg_reviews"] <- length(subset(ratings,ratings<3))
-						subjectSiteProfileData[1,"h_neg_addressed"] <- ""						
-						
-						numReviewRows <- length(reviews)
-						if(numReviewRows > 0){
-							masterReviewData <- rbind(masterReviewData, 
-								data.frame(
-									subject=replicate(numReviewRows, aSubjKey), 
-									site=replicate(numReviewRows, aSiteKey), 
-									date= dates, 
-									rating= ratings, 
-									text= reviews
-								)
+					nodeText <- html_text(dataNode)
+					match <- regexpr("return \\{",nodeText)
+					nodeText <- substr(nodeText,match + attr(match, "match.length")-1,nchar(nodeText))
+					
+					
+					#  NEXT: find the end of the javascript obj string and turn into json
+					match <- regexpr(',\\"ScheduledProviders',nodeText)
+					
+					nodeText <- paste0(substr(nodeText,1,match-1),"}")
+					
+					
+					jsonObj <- fromJSON(nodeText)
+					
+					
+					
+					#  Figure out how to get the star rating based on score information:  looks like the comment score / 2
+					debug("JSON OBJ")
+					debug(jsonObj$Surveys$comments)
+					
+					if(is.null(jsonObj)){
+						profileReport <- rbind(profileReport, 
+							data.frame(
+								subject=c(aSubjKey),
+								site= c(aSiteKey), 
+								ident=c(partialURL), 
+								status= c("Healthgrades data doesn't exist")
 							)
-						}
-					}else{
-						### More than 50 reviews requires another call to get the json
-						opString = partialURL
-						if(regexpr("\\?",partialURL)[[1]][1] > -1){
-							opString <- substr(opString,1,regexpr("\\?",opString)[[1]][1]-1)
-						}
+						)						
+						next
+					}
+					
+					
+					if(is.null(jsonObj$Surveys)){
+						profileReport <- rbind(profileReport, 
+							data.frame(
+								subject=c(aSubjKey),
+								site= c(aSiteKey), 
+								ident=c(partialURL), 
+								status= c("Healthgrades surveys don't exist")
+							)
+						)						
+						next
+					}
+					
+					if(is.null(jsonObj$Surveys$comments)){
+						profileReport <- rbind(profileReport, 
+							data.frame(
+								subject=c(aSubjKey),
+								site= c(aSiteKey), 
+								ident=c(partialURL), 
+								status= c("Healthgrades survey comments don't exist")
+							)
+						)						
+						next
+					}
+					comments <- jsonObj$Surveys$comments
+					
+					
+					debug("COMMENTS")
+					debug(comments)
+					
+					ratings <- (comments$score)/2
+					debug(ratings)
+					debug(length(ratings))
+					
+					subjectSiteProfileData[1,"h_num_ratings"] <- length(ratings)
+					subjectSiteProfileData[1,"h_num_reviews"] <- length(ratings)	
+					subjectSiteProfileData[1,"h_pos_ratings"] <- subjectSiteProfileData[1,"h_pos_reviews"] <- length(subset(ratings,ratings>=4))
+					subjectSiteProfileData[1,"h_neut_ratings"] <- subjectSiteProfileData[1,"h_neut_reviews"] <- length(subset(ratings,ratings==3))
+					subjectSiteProfileData[1,"h_neg_ratings"] <- subjectSiteProfileData[1,"h_neg_reviews"] <- length(subset(ratings,ratings<3))					
+				
+					# calculate overall rating:
+					
+					overallSum = 0;
+					for(a in 1:5){
+						overallSum <- overallSum + (a * length(subset(ratings,ratings == a)))
+					}
+					
+					debug("Overall Sum")
+					debug(overallSum)
+					
+					overallRating <- round(overallSum/length(ratings), digits=1)
+					subjectSiteProfileData[1,"h_rating"] <- overallRating
 
-						profileCodeParts <- strsplit(opString,"-")
-						profileCode <- profileCodeParts[[1]][length(profileCodeParts[[1]])]
-			
+					
+					debug("Profile Data:")
+					debug(subjectSiteProfileData)
+					
+					numReviewRows <- length(ratings)
+					if(numReviewRows > 0){
+						dates <- comments$submittedDate
+						dates <- as.character(format(as.Date(dates,"%m/%d/%Y"), "%m/%d/%y"))
+						ratings <- as.character(comments$score/2)
+						reviews <- paste0(comments$displayLastName, " - ", comments$commentText)						
 						
-						commentURL <- "https://www.healthgrades.com/uisvc/v1_0/pesui/api/comments"
-						body <- list(pwid = profileCode, currentPage = 1, perPage= reviewCount, sortOption = 1)
-						response <- POST(commentURL, body=body, encode="form")
-						json <- fromJSON(content(response, "text"))
 						
-						
-						dates <- json$results[,"submittedDate"]
-						dates <- as.character(as.Date(dates,"%B %d, %Y"))
-						ratings <- as.character(json$results[,"overallScore"])
-						reviews <- json$results[,"commentText"]	
-											
-						subjectSiteProfileData[1,"h_pos_reviews"] <- length(subset(ratings,ratings>=4))
-						subjectSiteProfileData[1,"h_neut_reviews"] <- length(subset(ratings,ratings==3))
-						subjectSiteProfileData[1,"h_neg_reviews"] <- length(subset(ratings,ratings<3))
-						subjectSiteProfileData[1,"h_neg_addressed"] <- ""						
-						
-						numReviewRows <- length(reviews)
-						if(numReviewRows > 0){
-							masterReviewData <- rbind(masterReviewData, 
-								data.frame(
-									subject=replicate(numReviewRows, aSubjKey), 
-									site=replicate(numReviewRows, aSiteKey), 
-									date= dates, 
-									rating= ratings, 
-									text= reviews
-								)
+						masterReviewData <- rbind(masterReviewData, 
+							data.frame(
+								subject=replicate(numReviewRows, aSubjKey), 
+								site=replicate(numReviewRows, aSiteKey), 
+								date= dates, 
+								rating= ratings, 
+								text= reviews
 							)
-						}												
+						)
+					}					
+					
+					
+
+				} else {
+					jsonObj <- hg_getProfileJSON(html_doc)
+					subjectSiteProfileData[1,"h_own_prof"] <- hg_GetOwned(html_doc)
+					subjectSiteProfileData[1,"h_rating"] <- jsonObj$model$overall$actualScore
+					subjectSiteProfileData[1,"h_num_ratings"] <- jsonObj$model$overall$responseCount
+					subjectSiteProfileData[1,"h_num_reviews"] <- jsonObj$model$overall$reviewCount
+	
+	
+					if(jsonObj$model$overall$responseCount > 0){
+						if(!is.null(nrow(jsonObj$model$surveyDistribution$aggregates))){
+							ratingCounts <- jsonObj$model$surveyDistribution$aggregates[,"count"]
+							subjectSiteProfileData[1,"h_pos_ratings"] <- ratingCounts[1] +  ratingCounts[2] 
+							subjectSiteProfileData[1,"h_neut_ratings"] <- ratingCounts[3] 
+							subjectSiteProfileData[1,"h_neg_ratings"] <- ratingCounts[4] +  ratingCounts[5]
+						}else{
+							# If no distribution is provided, it seems the h_rating value is used for the total
+							# number of h_num_ratings
+							subjectSiteProfileData[1,"h_pos_ratings"] <- if(subjectSiteProfileData[1,"h_rating"] >= 4) subjectSiteProfileData[1,"h_num_ratings"] else 0
+							subjectSiteProfileData[1,"h_neut_ratings"] <- if(subjectSiteProfileData[1,"h_rating"] == 3) subjectSiteProfileData[1,"h_num_ratings"] else 0
+							subjectSiteProfileData[1,"h_neg_ratings"] <- if(subjectSiteProfileData[1,"h_rating"] < 3) subjectSiteProfileData[1,"h_num_ratings"] else 0				
+						}
+					}
+	
+					reviewCount <- jsonObj$model$overall$reviewCount
+					if(reviewCount > 0){
+						if(reviewCount <= 50){
+							dates <- jsonObj$model$comments$results[,"submittedDate"]
+							dates <- as.character(as.Date(dates,"%B %d, %Y"))
+							ratings <- as.character(jsonObj$model$comments$results[,"overallScore"])
+							reviews <- jsonObj$model$comments$results[,"commentText"]	
+												
+							subjectSiteProfileData[1,"h_pos_reviews"] <- length(subset(ratings,ratings>=4))
+							subjectSiteProfileData[1,"h_neut_reviews"] <- length(subset(ratings,ratings==3))
+							subjectSiteProfileData[1,"h_neg_reviews"] <- length(subset(ratings,ratings<3))
+							subjectSiteProfileData[1,"h_neg_addressed"] <- ""						
+							
+							numReviewRows <- length(reviews)
+							if(numReviewRows > 0){
+								masterReviewData <- rbind(masterReviewData, 
+									data.frame(
+										subject=replicate(numReviewRows, aSubjKey), 
+										site=replicate(numReviewRows, aSiteKey), 
+										date= dates, 
+										rating= ratings, 
+										text= reviews
+									)
+								)
+							}
+						}else{
+							### More than 50 reviews requires another call to get the json
+							opString = partialURL
+							if(regexpr("\\?",partialURL)[[1]][1] > -1){
+								opString <- substr(opString,1,regexpr("\\?",opString)[[1]][1]-1)
+							}
+	
+							profileCodeParts <- strsplit(opString,"-")
+							profileCode <- profileCodeParts[[1]][length(profileCodeParts[[1]])]
+				
+							
+							commentURL <- "https://www.healthgrades.com/uisvc/v1_0/pesui/api/comments"
+							body <- list(pwid = profileCode, currentPage = 1, perPage= reviewCount, sortOption = 1)
+							response <- POST(commentURL, body=body, encode="form")
+							json <- fromJSON(content(response, "text"))
+							
+							
+							dates <- json$results[,"submittedDate"]
+							dates <- as.character(as.Date(dates,"%B %d, %Y"))
+
+							ratings <- as.character(json$results[,"overallScore"])
+							reviews <- json$results[,"commentText"]	
+												
+							subjectSiteProfileData[1,"h_pos_reviews"] <- length(subset(ratings,ratings>=4))
+							subjectSiteProfileData[1,"h_neut_reviews"] <- length(subset(ratings,ratings==3))
+							subjectSiteProfileData[1,"h_neg_reviews"] <- length(subset(ratings,ratings<3))
+							subjectSiteProfileData[1,"h_neg_addressed"] <- ""						
+							
+							numReviewRows <- length(reviews)
+							if(numReviewRows > 0){
+								masterReviewData <- rbind(masterReviewData, 
+									data.frame(
+										subject=replicate(numReviewRows, aSubjKey), 
+										site=replicate(numReviewRows, aSiteKey), 
+										date= dates, 
+										rating= ratings, 
+										text= reviews
+									)
+								)
+							}												
+						}
 					}
 				}
 			}
@@ -553,10 +672,13 @@ for (i in 1:length(subjects[["subject_key"]])) {  ### loop over docs  i <- 14  j
 				debug("GOOGLE SPECIAL CASE DATA:")
 				debug(partialURL)
 				
-				#regexMatch <- gregexpr("place_id",aURL)
-				#place_id <- substr(aURL, regexMatch[[1]][1] + 9,nchar(aURL))
-				place_id <- partialURL
-
+				
+				if(grepl("place_id", partialURL)){
+					match <- regexpr("place_id",partialURL)
+					place_id <- substr(partialURL, match + attr(match, "match.length") +1 ,nchar(partialURL))					
+				}else{
+					place_id <- partialURL
+				}		
 				## Get the JSON for the place_id
 				jsonURL <- paste0("https://maps.googleapis.com/maps/api/place/details/json?placeid=", place_id, "&key=", google_api_key)
 				
