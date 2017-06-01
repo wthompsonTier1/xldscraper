@@ -620,72 +620,65 @@ for (i in 1:length(subjects[["subject_key"]])) {  ### loop over docs  i <- 14  j
 
 				pageid <- partialURL
 
-
-
-				ajaxURL <- paste0("https://www.facebook.com/ajax/pages/review/spotlight_reviews_tab_pager/?cursor=1052655929%3A261596260549763&fetch_on_scroll=1&max_fetch_count=3000&page_id=",pageid,"&sort_order=most_recent&dpr=1&__user=0&__a=1&__dyn=5V8WXxaAcomgDxKS5o9FEbFbGEW8xdLFwgoqwWhE98nyUdUb8a-exebmbxK5WxucDKaxeUW2y5pQ12VVojxCaCzLypUkxu7EO2S1iyECQu2K4o4O68mCyEgyk3Gu64i9CUW7E56l0DAwGwxwAxCWK598qxmeyo-784a8CwByU-&__af=iw&__req=n&__be=-1&__pc=PHASED%3ADEFAULT&__rev=3035028")
-
-				debug("AJAX URL")
-				debug(ajaxURL)
-
+				ajaxURL <- paste0("https://www.facebook.com/ajax/pages/review/spotlight_reviews_tab_pager/?fetch_on_scroll=1&max_fetch_count=3000&page_id=",pageid,"&sort_order=most_recent&dpr=2&__user=0&__a=1&__dyn=5V5yAW8-aFoFxp2u6aOGeFxqeCwKAKGgS8zCC-C267UKewWhE98nyUdUaqwHUW4UJi28rxuF8WUOuVWxeUW6UO4GDgdUHDBxe6rCCyW-FFUkxvxOcxnxm1iyECQum2m4oqyU9omUmC-Wx2vgqx-u64i9CUW5oy5Fp89VQh1q4988VEf8Cu4rGUkACxe9yazEOcxO12y9EryoKfzUy&__af=iw&__req=a&__be=-1&__pc=PHASED%3ADEFAULT&__rev=3044736&__spin_r=3044736&__spin_b=trunk&__spin_t=1495740284")
 				
 				response <- readLines(ajaxURL)
 				response <- substr(response, attr(regexpr("[^\\{]*\\{",response), "match.length"), nchar(response))
 				facebookJSON <- fromJSON(response)
-				
-				debug("Facebook JSON:")
 				html <- read_html(facebookJSON$domops[[1]][[4]]$`__html`,verbose=FALSE)
-				nodes <- html_nodes(html, xpath="//div[1]/div")
 				
-				debug("Number of comments:")
-				debug(length(nodes))
+				textComments <- html_text(html_nodes(html, xpath="//div/div/div[2]/div[1]/div[2]/div[2]"))
+				ratings <- substr(html_text(html_nodes(html, xpath="//div/div/div[2]/div[1]/div[2]/div[1]/div/div/div[2]/div/div/div[2]/h5/span/span/i/u")),1,1)					
 				
-				##*[@id="\"u_n_46\""]/div[2]/div[1]/div[3]/div[2]/p
-				
-				
-				stop()
-				if(googleJSON$status == "OK"){
-					g_rating <- googleJSON$result$rating
-					if(!is.null(g_rating)){
-						subjectSiteProfileData[1,"g_rating"] <- g_rating					
-					}
-					reviews <- googleJSON$result$reviews
-					if(!is.null(reviews)){
-						debug("REVIEWS")
-						debug(reviews)	
-						
-						subjectSiteProfileData[1,"g_num_ratings"] <- subjectSiteProfileData[1,"g_num_reviews"] <- nrow(reviews)
-						subjectSiteProfileData[1,"g_pos_ratings"] <- subjectSiteProfileData[1,"g_pos_reviews"] <- nrow(reviews[as.numeric(reviews$rating) >= 4,])
-						subjectSiteProfileData[1,"g_neut_ratings"] <- subjectSiteProfileData[1,"g_neut_reviews"] <- nrow(reviews[as.numeric(reviews$rating) == 3,])
-						subjectSiteProfileData[1,"g_neg_ratings"] <- subjectSiteProfileData[1,"g_neg_reviews"] <- nrow(reviews[as.numeric(reviews$rating) < 3,])
-												
-						
-						
-						
-										
+				dates <-html_attr(html_nodes(html,xpath="//div/div/div[2]/div[1]/div[2]/div[1]/div/div/div[2]/div/div/div[2]/div/span[3]/span/a/abbr"),"title")
 
-						masterReviewData <- rbind(masterReviewData, 
-							data.frame(
-								subject=replicate(nrow(reviews), aSubjKey), 
-								site=replicate(nrow(reviews), aSiteKey), 
-								date=sapply(reviews[,"time"], function(x) as.character(anydate(x))), 
-								rating=as.character(reviews[,"rating"]), 
-								text=reviews[,"text"]
-							)
-						)						
+				dates <-format(as.Date(html_attr(html_nodes(html,xpath="//div/div/div[2]/div[1]/div[2]/div[1]/div/div/div[2]/div/div/div[2]/div/span[3]/span/a/abbr"),"title"), format="%A, %B %d, %Y "), format="%m/%d/%y")	
+
+					
+				f_df <- data.frame(date=dates, rating=ratings, comment=textComments)		
+
+				f_rating_sum <- 0		
+				for(z in 1:5){
+					f_rating_sum <- f_rating_sum + (z * nrow(f_df[f_df$rating == z,]))
+				}		
+
+				f_rating <- round(f_rating_sum / nrow(f_df),1)
+				subjectSiteProfileData[1,"f_rating"] <- f_rating				
+						
+				
+				subjectSiteProfileData[1,"f_num_ratings"] <- nrow(f_df)
+				subjectSiteProfileData[1,"f_pos_ratings"] <- nrow(f_df[as.numeric(f_df$rating) >= 4,])
+				subjectSiteProfileData[1,"f_neut_ratings"] <- nrow(f_df[as.numeric(f_df$rating) == 3,])
+				subjectSiteProfileData[1,"f_neg_ratings"] <- nrow(f_df[as.numeric(f_df$rating) < 3,])
+
+				subjectSiteProfileData[1,"f_num_reviews"] <- nrow(f_df[f_df$comment != "",])
+				subjectSiteProfileData[1,"f_pos_reviews"] <- nrow(f_df[f_df$comment != "" & as.numeric(f_df$rating) >= 4,])
+				subjectSiteProfileData[1,"f_neut_reviews"] <- nrow(f_df[f_df$comment != "" & as.numeric(f_df$rating) == 3,])
+				subjectSiteProfileData[1,"f_neg_reviews"] <- nrow(f_df[f_df$comment != "" & as.numeric(f_df$rating) < 3,])	
+			
+				masterReviewData <- rbind(masterReviewData, 
+					data.frame(
+						subject=replicate(nrow(f_df[f_df$comment != "",]), aSubjKey), 
+						site=replicate(nrow(f_df[f_df$comment != "",]), aSiteKey), 
+						date=f_df[f_df$comment != "","date"], 
+						rating=as.character(f_df[f_df$comment != "","rating"]), 
+						text=f_df[f_df$comment != "","comment"]
+					)
+				)						
 						
 					
-					}
-				}else{
-					profileReport <- rbind(profileReport, 
-						data.frame(
-							subject=c(aSubjKey),
-							site= c(aSiteKey), 
-							ident=c(partialURL), 
-							status= c("Failed")
-						)
-					)
-					next
-				}
+				#	}
+				#}else{
+				#	profileReport <- rbind(profileReport, 
+				#		data.frame(
+				#			subject=c(aSubjKey),
+				#			site= c(aSiteKey), 
+				#			ident=c(partialURL), 
+				#			status= c("Failed")
+				#		)
+				#	)
+				#	next
+				#}
 			}			
 			
 			##debug("END SPECIAL CASE ITEMS")
