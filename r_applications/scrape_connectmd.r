@@ -134,7 +134,7 @@ addToFileList("Subjects.csv", "Subjects.csv", "CSV file containing the subject d
 
 
 ###Load in subject_site_identifier.csv file; fix column names; lowercase subject_key and site key values
-subj_site_id <- read.csv("Subject_Site_Identifiers.csv", header = TRUE, sep = ",", stringsAsFactors = FALSE)  ### subject ids and url differentiators
+subj_site_id <- read.csv("Subject_Site_Identifiers.csv", header = TRUE, sep = ",", stringsAsFactors = FALSE, colClasses="character")  ### subject ids and url differentiators
 names(subj_site_id)[1] <- "subject_key"
 names(subj_site_id)[2] <- "site_key"
 names(subj_site_id)[3] <- "site_subject_ident"
@@ -237,17 +237,17 @@ for (i in 1:length(subjects[["subject_key"]])) {  ### loop over docs  i <- 14  j
 			
 			## If facebook profile:  add to profile report and skip
 			## until i can figure out how to get data
-			if(aSiteKey == "facebook"){
-				profileReport <- rbind(profileReport, 
-					data.frame(
-						subject=c(aSubjKey),
-						site= c(aSiteKey), 
-						ident=c(partialURL), 
-						status= c("Facebook profiles are skipped at this time")
-					)
-				)
-				next
-			}
+			#if(aSiteKey == "facebook"){
+			#	profileReport <- rbind(profileReport, 
+			#		data.frame(
+			#			subject=c(aSubjKey),
+			#			site= c(aSiteKey), 
+			#			ident=c(partialURL), 
+			#			status= c("Facebook profiles are skipped at this time")
+			#		)
+			#	)
+			#	next
+			#}
 		
 			if(is.null(partialURL) | is.na(partialURL) | partialURL == ""){
 				profileReport <- rbind(profileReport, 
@@ -267,7 +267,7 @@ for (i in 1:length(subjects[["subject_key"]])) {  ### loop over docs  i <- 14  j
 			colnames(subjectSiteProfileData) <- dataItemList[,"data_id"]
 			
 
-			if(aSiteKey != "google"){
+			if(aSiteKey != "google" & aSiteKey != "facebook"){
 				html_doc <- tryCatch(read_html(aURL, verbose=FALSE), error= function(e){return (FALSE)})
 				
 				if(is.logical(html_doc)){
@@ -735,7 +735,73 @@ for (i in 1:length(subjects[["subject_key"]])) {  ### loop over docs  i <- 14  j
 				}
 			}			
 			
+			if (aSiteKey == "facebook"){
+				
+				debug("FACEBOOK SPECIAL CASE DATA:")
+				debug(partialURL)
+
+				pageid <- partialURL
+
+				ajaxURL <- paste0("https://www.facebook.com/ajax/pages/review/spotlight_reviews_tab_pager/?fetch_on_scroll=1&max_fetch_count=3000&page_id=",pageid,"&sort_order=most_recent&dpr=2&__user=0&__a=1&__dyn=5V5yAW8-aFoFxp2u6aOGeFxqeCwKAKGgS8zCC-C267UKewWhE98nyUdUaqwHUW4UJi28rxuF8WUOuVWxeUW6UO4GDgdUHDBxe6rCCyW-FFUkxvxOcxnxm1iyECQum2m4oqyU9omUmC-Wx2vgqx-u64i9CUW5oy5Fp89VQh1q4988VEf8Cu4rGUkACxe9yazEOcxO12y9EryoKfzUy&__af=iw&__req=a&__be=-1&__pc=PHASED%3ADEFAULT&__rev=3044736&__spin_r=3044736&__spin_b=trunk&__spin_t=1495740284")
+				
+				response <- readLines(ajaxURL)
+				response <- substr(response, attr(regexpr("[^\\{]*\\{",response), "match.length"), nchar(response))
+				facebookJSON <- fromJSON(response)
+				html <- read_html(facebookJSON$domops[[1]][[4]]$`__html`,verbose=FALSE)
+				
+				textComments <- html_text(html_nodes(html, xpath="//div/div/div[2]/div[1]/div[2]/div[2]"))
+				ratings <- substr(html_text(html_nodes(html, xpath="//div/div/div[2]/div[1]/div[2]/div[1]/div/div/div[2]/div/div/div[2]/h5/span/span/i/u")),1,1)					
+				
+				dates <-html_attr(html_nodes(html,xpath="//div/div/div[2]/div[1]/div[2]/div[1]/div/div/div[2]/div/div/div[2]/div/span[3]/span/a/abbr"),"title")
+
+				dates <-format(as.Date(html_attr(html_nodes(html,xpath="//div/div/div[2]/div[1]/div[2]/div[1]/div/div/div[2]/div/div/div[2]/div/span[3]/span/a/abbr"),"title"), format="%A, %B %d, %Y "), format="%m/%d/%y")	
+
+					
+				f_df <- data.frame(date=dates, rating=ratings, comment=textComments)		
+
+				f_rating_sum <- 0		
+				for(z in 1:5){
+					f_rating_sum <- f_rating_sum + (z * nrow(f_df[f_df$rating == z,]))
+				}		
+
+				f_rating <- round(f_rating_sum / nrow(f_df),1)
+				subjectSiteProfileData[1,"f_rating"] <- f_rating				
+						
+				
+				subjectSiteProfileData[1,"f_num_ratings"] <- nrow(f_df)
+				subjectSiteProfileData[1,"f_pos_ratings"] <- nrow(f_df[as.numeric(f_df$rating) >= 4,])
+				subjectSiteProfileData[1,"f_neut_ratings"] <- nrow(f_df[as.numeric(f_df$rating) == 3,])
+				subjectSiteProfileData[1,"f_neg_ratings"] <- nrow(f_df[as.numeric(f_df$rating) < 3,])
+
+				subjectSiteProfileData[1,"f_num_reviews"] <- nrow(f_df[f_df$comment != "",])
+				subjectSiteProfileData[1,"f_pos_reviews"] <- nrow(f_df[f_df$comment != "" & as.numeric(f_df$rating) >= 4,])
+				subjectSiteProfileData[1,"f_neut_reviews"] <- nrow(f_df[f_df$comment != "" & as.numeric(f_df$rating) == 3,])
+				subjectSiteProfileData[1,"f_neg_reviews"] <- nrow(f_df[f_df$comment != "" & as.numeric(f_df$rating) < 3,])	
 			
+				masterReviewData <- rbind(masterReviewData, 
+					data.frame(
+						subject=replicate(nrow(f_df[f_df$comment != "",]), aSubjKey), 
+						site=replicate(nrow(f_df[f_df$comment != "",]), aSiteKey), 
+						date=f_df[f_df$comment != "","date"], 
+						rating=as.character(f_df[f_df$comment != "","rating"]), 
+						text=f_df[f_df$comment != "","comment"]
+					)
+				)						
+						
+					
+				#	}
+				#}else{
+				#	profileReport <- rbind(profileReport, 
+				#		data.frame(
+				#			subject=c(aSubjKey),
+				#			site= c(aSiteKey), 
+				#			ident=c(partialURL), 
+				#			status= c("Failed")
+				#		)
+				#	)
+				#	next
+				#}
+			}			
 			
 			##debug("END SPECIAL CASE ITEMS")
 	
