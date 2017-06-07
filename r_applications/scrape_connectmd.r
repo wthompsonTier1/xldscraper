@@ -692,6 +692,8 @@ for (i in 1:length(subjects[["subject_key"]])) {  ### loop over docs  i <- 14  j
 				
 				debug("GOOGLE JSON:")
 				debug(googleJSON)
+				
+				stop()
 								
 				if(googleJSON$status == "OK"){
 					g_rating <- googleJSON$result$rating
