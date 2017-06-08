@@ -7,11 +7,14 @@
                 parent::__construct();
                 $this->load->model('Searchsites_model');
                 $this->load->model('ScrapeResults_model');
+                $this->load->model("Help_model");
                 $this->load->helper(array('url','form'));
 				$this->output->delete_cache();
 				$this->data['sitetitle'] = "XLD Data Mining";
 				$this->data['title'] = "Upload CSV and Run Scraper";
-				$this->data['error'] = " ";		
+				$this->data['error'] = " ";	
+				$this->data['helpitems'] = $this->Help_model->get_help_items();
+					
 				//error_log("DATA:::>>>");
 				//error_log(json_encode($this->data));	
         }
@@ -25,6 +28,7 @@
 	        }
 
 			$this->data['error'] = " ";
+
             $this->load->view("templates/header", $this->data);
             $this->load->view("templates/navigation", $this->data);
 			$this->load->view('uploadcsv/upload_form', $this->data);     

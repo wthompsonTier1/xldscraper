@@ -21,6 +21,16 @@
                     <li class="page-scroll">
                         <a href="<?php echo base_url(); ?>uploadcsv/index">Upload CSV Files</a>
                     </li>
+                    <li class="dropdown">
+						  <a data-toggle="dropdown">Help<span class="caret"></span></a>
+						  <ul class="dropdown-menu">
+							  <?php
+								foreach($helpitems as $hi){
+									echo "<li><a style='color:#18BC9C' href='".$hi[1]."'>".$hi[0]."</a></li>";
+								}  
+							  ?>
+						  </ul>
+                    </li>	                   
                 </ul>
             </div>
             <!-- /.navbar-collapse -->

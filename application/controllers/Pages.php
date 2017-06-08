@@ -8,8 +8,13 @@
 	                show_404();
 	        }
 			$this->load->helper("url");
+			$this->load->model("Help_model");
+
+			
 	        $data['title'] = ucfirst($page); // Capitalize the first letter
 	        $data['sitetitle'] = "XLD Data Mining";
+			$data['helpitems'] = $this->Help_model->get_help_items();
+	        
 	
 	        $this->load->view('templates/header', $data);
 	        $this->load->view('templates/navigation', $data);

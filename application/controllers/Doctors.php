@@ -5,6 +5,7 @@
                 parent::__construct();
                 $this->load->model('Searchsites_model');
                 $this->load->model('ScrapeResults_model');
+                $this->load->model("Help_model");
                 $this->load->helper('url');
 				$this->output->delete_cache();
                 
@@ -22,6 +23,7 @@
 				        
 			$data['title'] = "Search Doctors";
 			$data['sitetitle'] = "XLD Data Mining";
+			$data['helpitems'] = $this->Help_model->get_help_items();
 
 	        
 	        $this->load->view('templates/header', $data);
