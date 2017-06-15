@@ -260,6 +260,7 @@ for (i in 1:length(subjects[["subject_key"]])) {  ### loop over docs  i <- 14  j
 				)					
 				next
 			}
+			partialURL <- trimws(partialURL)
 			aURL <- paste0(sites[sites[["site_key"]]==aSiteKey,"site_home"], profilesForSite[j,"site_subject_ident"])
 			debug(paste0("<-----  BEGIN PROFILE LOOP (subject: ",i," site: ", aSubjKey, " profile-num: ", j, " url: ", aURL, ")  ----->"))
 			
@@ -495,6 +496,17 @@ for (i in 1:length(subjects[["subject_key"]])) {  ### loop over docs  i <- 14  j
 
 				} else {
 					jsonObj <- hg_getProfileJSON(html_doc)
+					if(is.null(jsonObj) | is.na(jsonObj) | jsonObj == ""){					
+						profileReport <- rbind(profileReport, 
+							data.frame(
+								subject=c(aSubjKey),
+								site= c(aSiteKey), 
+								ident=c(partialURL), 
+								status= c("No Data From URL")
+							)
+						)						
+						next					
+					}
 					subjectSiteProfileData[1,"h_own_prof"] <- hg_GetOwned(html_doc)
 					subjectSiteProfileData[1,"h_rating"] <- jsonObj$model$overall$actualScore
 					subjectSiteProfileData[1,"h_num_ratings"] <- jsonObj$model$overall$responseCount
@@ -743,20 +755,38 @@ for (i in 1:length(subjects[["subject_key"]])) {  ### loop over docs  i <- 14  j
 				debug("FACEBOOK SPECIAL CASE DATA:")
 				debug(partialURL)
 
-				pageid <- partialURL
 
+				if(grepl("id=", partialURL)){
+					match <- regexpr("id=",partialURL)
+					pageid <- substr(partialURL, match + attr(match, "match.length") ,nchar(partialURL))					
+				}else{
+					pageid <- partialURL
+				}
+
+				debug("PAGEID")
+				debug(pageid)
 				ajaxURL <- paste0("https://www.facebook.com/ajax/pages/review/spotlight_reviews_tab_pager/?fetch_on_scroll=1&max_fetch_count=3000&page_id=",pageid,"&sort_order=most_recent&dpr=2&__user=0&__a=1&__dyn=5V5yAW8-aFoFxp2u6aOGeFxqeCwKAKGgS8zCC-C267UKewWhE98nyUdUaqwHUW4UJi28rxuF8WUOuVWxeUW6UO4GDgdUHDBxe6rCCyW-FFUkxvxOcxnxm1iyECQum2m4oqyU9omUmC-Wx2vgqx-u64i9CUW5oy5Fp89VQh1q4988VEf8Cu4rGUkACxe9yazEOcxO12y9EryoKfzUy&__af=iw&__req=a&__be=-1&__pc=PHASED%3ADEFAULT&__rev=3044736&__spin_r=3044736&__spin_b=trunk&__spin_t=1495740284")
 				
 				
 				debug("Facebook ajax URL")
 				debug(ajaxURL)
-				
+				response <- tryCatch(readLines(ajaxURL), error= function(e){return (FALSE)})
+				if(is.logical(response)){
+					profileReport <- rbind(profileReport, 
+						data.frame(
+							subject=c(aSubjKey),
+							site= c(aSiteKey), 
+							ident=c(partialURL), 
+							status= c("Unable to open facebook page")
+						)
+					)
+					next
+				}			
 				response <- readLines(ajaxURL)
+				
 				response <- substr(response, attr(regexpr("[^\\{]*\\{",response), "match.length"), nchar(response))
 				facebookJSON <- fromJSON(response)
-				
-				
-				
+
 				#debug("Facebook JSON")
 				#debug(facebookJSON)
 				
