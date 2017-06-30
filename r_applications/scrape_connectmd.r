@@ -396,6 +396,9 @@ for (i in 1:length(subjects[["subject_key"]])) {  ### loop over docs  i <- 14  j
 					subjectSiteProfileData[1,"v_neg_ratings"] <- tmpRatsRvws$ratings[1] +  tmpRatsRvws$ratings[2]
 					
 					reviews <- tmpRatsRvws$reviews
+					
+					debug("VITAL REVIEWS")
+					debug(reviews)
 					numReviewRows <- nrow(reviews)
 					if(numReviewRows > 0){
 						masterReviewData <- rbind(masterReviewData, 
@@ -407,9 +410,9 @@ for (i in 1:length(subjects[["subject_key"]])) {  ### loop over docs  i <- 14  j
 								text=reviews[,"text"]
 							)
 						)					
-						subjectSiteProfileData[1,"v_pos_reviews"] <- nrow(reviews[as.numeric(reviews$rating) >= 4,])
-						subjectSiteProfileData[1,"v_neut_reviews"] <- nrow(reviews[as.numeric(reviews$rating) == 3,])
-						subjectSiteProfileData[1,"v_neg_reviews"] <- nrow(reviews[as.numeric(reviews$rating) < 3,])
+						subjectSiteProfileData[1,"v_pos_reviews"] <- nrow(reviews[reviews$text != "" & as.numeric(reviews$rating) >= 4,])
+						subjectSiteProfileData[1,"v_neut_reviews"] <- nrow(reviews[reviews$text != "" & as.numeric(reviews$rating) == 3,])
+						subjectSiteProfileData[1,"v_neg_reviews"] <- nrow(reviews[reviews$text != "" & as.numeric(reviews$rating) < 3,])
 					}
 				} else { ### else, number of reviews was zero
 					subjectSiteProfileData[1,"v_pos_ratings"] <- subjectSiteProfileData[1,"v_neut_ratings"] <- subjectSiteProfileData[1,"v_neg_ratings"] <- 0
