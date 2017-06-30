@@ -18,6 +18,51 @@
 #########################################################################################################
 ### Functions for this script
 #########################################################################################################
+google_formatDate <- function(x){
+	####  Date Rules:
+	#     "in the last week" = today 
+	#     "a week ago" = today - 7 days
+	#     "* weeks ago" = today - (* x 7)
+	#	  "a month ago" = today - 30 days
+	#     "* months ago" = today -( * x 30)
+	#     "a year ago"  = today - 365
+	#     "* years ago" = today - (* x 365)
+	#  as.Date(Sys.time()) - 365
+	###			
+	x <- tolower(x)
+	if(grepl("in the last week",x)){
+		x <- as.Date(Sys.time())
+	}
+	if(grepl("a week ago", x)){
+		x <- as.Date(Sys.time()) - 7
+	}	
+	if(grepl("weeks ago", x)){		
+		match <- regexpr(" weeks ago",x)
+		numWeeks <- as.numeric(substr(x,1, match -1))
+		x <- as.Date(Sys.time()) - (7 * numWeeks)		
+	}	
+	if(grepl("a month ago", x)){
+		x <- as.Date(Sys.time()) - 30
+	}
+	if(grepl("months ago", x)){		
+		match <- regexpr(" months ago",x)
+		numMonths <- as.numeric(substr(x,1, match -1))
+		x <- as.Date(Sys.time()) - (30 * numMonths)		
+	}		
+	if(grepl("a year ago", x)){
+		x <- as.Date(Sys.time()) - 365
+	}
+	if(grepl("years ago", x)){		
+		match <- regexpr(" years ago",x)
+		numYears <- as.numeric(substr(x,1, match -1))
+		x <- as.Date(Sys.time()) - (365 * numYears)		
+	}		
+		
+	return(as.character(format(x, format="%m/%d/%y")))  
+}
+
+
+
 getExistance <- function(html_doc, xp) {
       nodes <- html_nodes(html_doc, xpath=xp)
       tmp_result <- 0
