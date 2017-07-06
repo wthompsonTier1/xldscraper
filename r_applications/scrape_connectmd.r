@@ -749,7 +749,7 @@ for (i in 1:length(subjects[["subject_key"]])) {  ### loop over docs  i <- 14  j
 								subject=c(aSubjKey),
 								site= c(aSiteKey), 
 								ident=c(partialURL), 
-								status= c("Google Error")
+								status= c("Google Error:  No Map URL")
 							)
 						)					
 						next
@@ -764,6 +764,19 @@ for (i in 1:length(subjects[["subject_key"]])) {  ### loop over docs  i <- 14  j
 					
 					debug("LRD Value:")
 					debug(lrdVal)
+					if(is.null(lrdVal) | is.na(lrdVal) | lrdVal == ""){
+						profileReport <- rbind(profileReport, 
+							data.frame(
+								subject=c(aSubjKey),
+								site= c(aSiteKey), 
+								ident=c(partialURL), 
+								status= c("Google Error:  No lrd value")
+							)
+						)					
+						next
+					}					
+					
+					
 					
 					startItemNum <- 0
 					
