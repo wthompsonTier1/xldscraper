@@ -397,17 +397,21 @@ for (i in 1:length(subjects[["subject_key"]])) {  ### loop over docs  i <- 14  j
 					
 					reviews <- tmpRatsRvws$reviews
 					
-					debug("VITAL REVIEWS")
-					debug(reviews)
-					numReviewRows <- nrow(reviews)
+					#debug("VITAL REVIEWS")
+					#debug(reviews)
+					
+					
+					#debug(reviews[reviews$text != "",])
+
+					numReviewRows <- nrow(reviews[reviews$text != "",])
 					if(numReviewRows > 0){
 						masterReviewData <- rbind(masterReviewData, 
 							data.frame(
 								subject=replicate(numReviewRows, aSubjKey), 
 								site=replicate(numReviewRows, aSiteKey), 
-								date=reviews[,"date"], 
-								rating=reviews[,"rating"], 
-								text=reviews[,"text"]
+								date=reviews[reviews$text != "","date"], 
+								rating=reviews[reviews$text != "","rating"], 
+								text=reviews[reviews$text != "","text"]
 							)
 						)					
 						subjectSiteProfileData[1,"v_pos_reviews"] <- nrow(reviews[reviews$text != "" & as.numeric(reviews$rating) >= 4,])
@@ -831,12 +835,17 @@ for (i in 1:length(subjects[["subject_key"]])) {  ### loop over docs  i <- 14  j
 							break
 						}
 						
+
+						
 						### Process the comments on this page:
-						gComments <- trimws(getTextContent(commentItems, xp='div[1]/div[3]/div/span'))
-						
-						
-						gDates <- trimws(getTextContent(commentItems, xp='div[1]/div[2]/span[1]'))
+						#gComments <- trimws(getTextContent(commentItems, xp='div[1]/div[3]/div/span'))
+						gComments <- trimws(getTextContent(commentItems, xp='div[@class="_vor"]/div[3]/div[@class="_ucl"]/span'))
+
+					
+						#gDates <- trimws(getTextContent(commentItems, xp='div[1]/div[2]/span[1]'))
+						gDates <- trimws(getTextContent(commentItems, xp='div[@class="_vor"]/div[3]/div[@class="_Rps"]/span[@class="_Q7k"]'))
 						gDates <- unlist(lapply(gDates, google_formatDate))
+					
 			
 						gRatings <- as.numeric(substr(trimws(getAttributeValue(commentItems, "//g-review-stars/span", "aria-label")),6,9))
 						
@@ -883,7 +892,7 @@ for (i in 1:length(subjects[["subject_key"]])) {  ### loop over docs  i <- 14  j
 								subject=replicate(nrow(googleData[googleData$comment != "",]), aSubjKey), 
 								site=replicate(nrow(googleData[googleData$comment != "",]), aSiteKey), 
 								date=googleData[googleData$comment != "","date"], 
-								rating=googleData[googleData$comment != "","rating"], 
+								rating=as.character(googleData[googleData$comment != "","rating"]), 
 								text=googleData[googleData$comment != "","comment"]
 							)
 						)											
