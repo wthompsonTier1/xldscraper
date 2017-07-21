@@ -544,7 +544,16 @@ for (i in 1:length(subjects[["subject_key"]])) {  ### loop over docs  i <- 14  j
 					
 
 				} else {
+					
+					debug("Not a Group Directory")
+					
 					jsonObj <- hg_getProfileJSON(html_doc)
+					
+					#debug("JSON Object:")
+					#debug(jsonObj);
+					
+					#stop()
+					
 					if(is.null(jsonObj) | is.na(jsonObj) | jsonObj == ""){					
 						profileReport <- rbind(profileReport, 
 							data.frame(

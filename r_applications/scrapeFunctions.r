@@ -131,8 +131,11 @@ hg_GetReviews <- function(doc) {
 hg_getProfileJSON <- function(doc){
 	
 	####Find the appropriate script tag
-	scriptxpath <- "/html/body/div[2]/div[3]/script[contains(text(),'pageState.pes = ')]"
+	scriptxpath <- "//script[contains(text(),'pageState.pes = ')]"
+	##scriptxpath <- "/html/body/div[2]/div[3]/script[contains(text(),'pageState.pes = ')]"
 	scriptnode <- html_nodes(doc,xpath=scriptxpath)
+	
+
 	json <- "";
 	if(length(scriptnode) > 0){ 
 		scriptText <- html_text(scriptnode)
