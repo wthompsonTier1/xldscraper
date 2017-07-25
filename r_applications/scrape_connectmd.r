@@ -271,7 +271,7 @@ for (i in 1:length(subjects[["subject_key"]])) {  ### loop over docs  i <- 14  j
 		#temp[1,paste0(siteFirstChar, "_num_prof")] <- nrow(profilesForSite) 
 
 		debug(paste0("<-------  BEGIN PROCESSING PROFILES FOR SUBJECT/SITE (", aSubjKey, ", ", aSiteKey, ") ---------->"))
-		for (j in 1:nrow(profilesForSite)) {   ### Loop over sites j <- 1
+		for (j in 1:nrow(profilesForSite)) {
 			partialURL <- profilesForSite[j,"site_subject_ident"]
 			
 			###  profile_id:  this is used for profile related file creation
@@ -749,14 +749,148 @@ for (i in 1:length(subjects[["subject_key"]])) {  ### loop over docs  i <- 14  j
 				
 				googleJSON <- fromJSON(jsonURL)
 					
-				if(googleJSON$status == "OK"){
+				if(googleJSON$status == "OK"){     			
 					mapUrl <- googleJSON$result$url
 					debug("Map Url:")
 					debug(mapUrl)
 					
 					mapDoc <- read_html(mapUrl, verbose=FALSE)
 					mapDoc <- tryCatch(read_html(mapUrl, verbose=FALSE), error= function(e){return (FALSE)})
-					if(is.logical(mapDoc)){
+					if(!is.logical(mapDoc)){
+						mapText <- html_text(mapDoc)
+						
+						start <- regexpr("lrd=",mapText)
+						mapText <- substr(mapText,start + attr(start, "match.length"), start + 100)
+						end <- regexpr("\\,",mapText)
+						lrdVal <- gsub(":","%3A",substr(mapText,1, end -1))
+						
+						debug("LRD Value:")
+						debug(lrdVal)
+						if(!(is.null(lrdVal) | is.na(lrdVal) | lrdVal == "")){
+							startItemNum <- 0
+							googleData <- data.frame(date=c(), rating=c(), comment=c(), stringsAsFactors=FALSE)
+							commentPage <- 0
+							repeat{
+								commentPage <- commentPage + 1
+								commentUrl <- paste0("https://www.google.com/async/reviewSort?yv=2&async=feature_id:",lrdVal,",start_index:",startItemNum,",sort_by:newestFirst,more:true,_pms:s")
+		
+								debug("Comment URL")
+								debug(commentUrl)	
+		
+								
+								###  Create the phantomjs file
+								script_template <- paste(readLines('../../r_applications/phantom_js_template.txt', warn=FALSE), collapse="\n")
+								phantom_output_file <- paste0(scrape_timestamp,"_phantom_response_", profile_id, "_commentpage_", commentPage, ".json")
+								script_template <- paste0("var output_file = '", phantom_output_file,"';\n", script_template)
+								script_template <- paste0("var source_url = '",trimws(commentUrl),"';\n", script_template)
+								
+								# Create the phantom js file
+								phantom_input_file <- paste0(scrape_timestamp, "_phantom_input_", profile_id,"_commentpage_",commentPage, ".js")
+								write.table(script_template, 
+								            file= phantom_input_file, 
+								            quote = FALSE,
+								            col.names = FALSE,
+								            row.names = FALSE)							
+								
+								# Run phantom on the input.js file
+								system(paste0(phantomjs_path, "/bin/phantomjs ", phantom_input_file))
+								
+								debug("DONE PHANTOM JS")
+								
+								commentJSON <- fromJSON(phantom_output_file)
+								
+								debug("JSON")
+								debug(commentJSON)
+								
+								commentHtml <- commentJSON[[2]][[2]][1]
+								
+		
+								commentDoc <- read_html(commentHtml,verbose=FALSE)
+								commentItems <- html_nodes(commentDoc, xpath="//body/div/div[3]/div")
+					
+								
+								debug("Number of comments on this page:")
+								debug(length(commentItems))
+								
+								
+								if(length(commentItems) == 0){
+									debug("0 comments on this page")
+									break
+								}
+								
+		
+								
+								### Process the comments on this page:
+								#gComments <- trimws(getTextContent(commentItems, xp='div[1]/div[3]/div/span'))
+								gComments <- trimws(getTextContent(commentItems, xp='div[@class="_vor"]/div[3]/div[@class="_ucl"]/span'))
+		
+							
+								#gDates <- trimws(getTextContent(commentItems, xp='div[1]/div[2]/span[1]'))
+								gDates <- trimws(getTextContent(commentItems, xp='div[@class="_vor"]/div[3]/div[@class="_Rps"]/span[@class="_Q7k"]'))
+								gDates <- unlist(lapply(gDates, google_formatDate))
+							
+					
+								gRatings <- as.numeric(substr(trimws(getAttributeValue(commentItems, "//g-review-stars/span", "aria-label")),6,9))
+								
+								googleData <- rbind(googleData, 
+									data.frame(
+										date=gDates,
+										rating= gRatings, 
+										comment=gComments 
+									)
+								)		
+								
+		
+								if(length(commentItems) < 10){
+									break
+								}else{
+									startItemNum <- startItemNum + 10
+								}
+							}
+							debug("Google Data")
+							debug(googleData)
+		
+		
+							filename <- paste0("googleData_",profile_id,".csv")
+							write.csv(googleData, file = filename , row.names=FALSE)					
+							
+							
+							##  NOTE:  this calculation does not reflect what the actual rating is.  We still need to figure 
+							##  out how to grab the rating value from google.  Calculating it is not accurate						
+							subjectSiteProfileData[1,"g_rating"] <- round(sum(as.numeric(googleData[,"rating"]))/nrow(googleData),1)
+		
+							if(nrow(googleData) > 0){							
+								subjectSiteProfileData[1,"g_num_ratings"] <- nrow(googleData)
+								subjectSiteProfileData[1,"g_pos_ratings"] <- nrow(googleData[googleData$rating >= 4,])
+								subjectSiteProfileData[1,"g_neut_ratings"] <- nrow(googleData[googleData$rating == 3,])
+								subjectSiteProfileData[1,"g_neg_ratings"] <- nrow(googleData[googleData$rating < 3,])
+				
+								subjectSiteProfileData[1,"g_num_reviews"] <- nrow(googleData[googleData$comment != "",])
+								subjectSiteProfileData[1,"g_pos_reviews"] <- nrow(googleData[googleData$comment != "" & googleData$rating >= 4,])
+								subjectSiteProfileData[1,"g_neut_reviews"] <- nrow(googleData[googleData$comment != "" & googleData$rating == 3,])
+								subjectSiteProfileData[1,"g_neg_reviews"] <- nrow(googleData[googleData$comment != "" & googleData$rating < 3,])	
+							
+								masterReviewData <- rbind(masterReviewData, 
+									data.frame(
+										subject=replicate(nrow(googleData[googleData$comment != "",]), aSubjKey), 
+										site=replicate(nrow(googleData[googleData$comment != "",]), aSiteKey), 
+										date=googleData[googleData$comment != "","date"], 
+										rating=as.character(googleData[googleData$comment != "","rating"]), 
+										text=googleData[googleData$comment != "","comment"]
+									)
+								)											
+							}							
+						}else{
+							profileReport <- rbind(profileReport, 
+								data.frame(
+									subject=c(aSubjKey),
+									site= c(aSiteKey), 
+									ident=c(partialURL), 
+									status= c("Google Error:  No lrd value")
+								)
+							)					
+						}
+					}else{
 						profileReport <- rbind(profileReport, 
 							data.frame(
 								subject=c(aSubjKey),
@@ -765,146 +899,6 @@ for (i in 1:length(subjects[["subject_key"]])) {  ### loop over docs  i <- 14  j
 								status= c("Google Error:  No Map URL")
 							)
 						)					
-						next
-					}
-								
-					mapText <- html_text(mapDoc)
-					
-					start <- regexpr("lrd=",mapText)
-					mapText <- substr(mapText,start + attr(start, "match.length"), start + 100)
-					end <- regexpr("\\,",mapText)
-					lrdVal <- gsub(":","%3A",substr(mapText,1, end -1))
-					
-					debug("LRD Value:")
-					debug(lrdVal)
-					if(is.null(lrdVal) | is.na(lrdVal) | lrdVal == ""){
-						profileReport <- rbind(profileReport, 
-							data.frame(
-								subject=c(aSubjKey),
-								site= c(aSiteKey), 
-								ident=c(partialURL), 
-								status= c("Google Error:  No lrd value")
-							)
-						)					
-						next
-					}					
-					
-					
-					
-					startItemNum <- 0
-					
-					
-					googleData <- data.frame(date=c(), rating=c(), comment=c(), stringsAsFactors=FALSE)
-					commentPage <- 0
-					repeat{
-						commentPage <- commentPage + 1
-						commentUrl <- paste0("https://www.google.com/async/reviewSort?yv=2&async=feature_id:",lrdVal,",start_index:",startItemNum,",sort_by:newestFirst,more:true,_pms:s")
-
-						debug("Comment URL")
-						debug(commentUrl)	
-
-						
-						###  Create the phantomjs file
-						script_template <- paste(readLines('../../r_applications/phantom_js_template.txt', warn=FALSE), collapse="\n")
-						phantom_output_file <- paste0(scrape_timestamp,"_phantom_response_", profile_id, "_commentpage_", commentPage, ".json")
-						script_template <- paste0("var output_file = '", phantom_output_file,"';\n", script_template)
-						script_template <- paste0("var source_url = '",trimws(commentUrl),"';\n", script_template)
-						
-						# Create the phantom js file
-						phantom_input_file <- paste0(scrape_timestamp, "_phantom_input_", profile_id,"_commentpage_",commentPage, ".js")
-						write.table(script_template, 
-						            file= phantom_input_file, 
-						            quote = FALSE,
-						            col.names = FALSE,
-						            row.names = FALSE)							
-						
-						# Run phantom on the input.js file
-						system(paste0(phantomjs_path, "/bin/phantomjs ", phantom_input_file))
-						
-						debug("DONE PHANTOM JS")
-						
-						commentJSON <- fromJSON(phantom_output_file)
-						
-						debug("JSON")
-						debug(commentJSON)
-						
-						commentHtml <- commentJSON[[2]][[2]][1]
-						
-
-						commentDoc <- read_html(commentHtml,verbose=FALSE)
-						commentItems <- html_nodes(commentDoc, xpath="//body/div/div[3]/div")
-			
-						
-						debug("Number of comments on this page:")
-						debug(length(commentItems))
-						
-						
-						if(length(commentItems) == 0){
-							debug("0 comments on this page")
-							break
-						}
-						
-
-						
-						### Process the comments on this page:
-						#gComments <- trimws(getTextContent(commentItems, xp='div[1]/div[3]/div/span'))
-						gComments <- trimws(getTextContent(commentItems, xp='div[@class="_vor"]/div[3]/div[@class="_ucl"]/span'))
-
-					
-						#gDates <- trimws(getTextContent(commentItems, xp='div[1]/div[2]/span[1]'))
-						gDates <- trimws(getTextContent(commentItems, xp='div[@class="_vor"]/div[3]/div[@class="_Rps"]/span[@class="_Q7k"]'))
-						gDates <- unlist(lapply(gDates, google_formatDate))
-					
-			
-						gRatings <- as.numeric(substr(trimws(getAttributeValue(commentItems, "//g-review-stars/span", "aria-label")),6,9))
-						
-						googleData <- rbind(googleData, 
-							data.frame(
-								date=gDates,
-								rating= gRatings, 
-								comment=gComments 
-							)
-						)		
-						
-
-						if(length(commentItems) < 10){
-							break
-						}else{
-							startItemNum <- startItemNum + 10
-						}
-					}
-					debug("Google Data")
-					debug(googleData)
-
-
-					filename <- paste0("googleData_",profile_id,".csv")
-					write.csv(googleData, file = filename , row.names=FALSE)					
-					
-					
-					##  NOTE:  this calculation does not reflect what the actual rating is.  We still need to figure 
-					##  out how to grab the rating value from google.  Calculating it is not accurate						
-					subjectSiteProfileData[1,"g_rating"] <- round(sum(as.numeric(googleData[,"rating"]))/nrow(googleData),1)
-
-					if(nrow(googleData) > 0){							
-						subjectSiteProfileData[1,"g_num_ratings"] <- nrow(googleData)
-						subjectSiteProfileData[1,"g_pos_ratings"] <- nrow(googleData[googleData$rating >= 4,])
-						subjectSiteProfileData[1,"g_neut_ratings"] <- nrow(googleData[googleData$rating == 3,])
-						subjectSiteProfileData[1,"g_neg_ratings"] <- nrow(googleData[googleData$rating < 3,])
-		
-						subjectSiteProfileData[1,"g_num_reviews"] <- nrow(googleData[googleData$comment != "",])
-						subjectSiteProfileData[1,"g_pos_reviews"] <- nrow(googleData[googleData$comment != "" & googleData$rating >= 4,])
-						subjectSiteProfileData[1,"g_neut_reviews"] <- nrow(googleData[googleData$comment != "" & googleData$rating == 3,])
-						subjectSiteProfileData[1,"g_neg_reviews"] <- nrow(googleData[googleData$comment != "" & googleData$rating < 3,])	
-					
-						masterReviewData <- rbind(masterReviewData, 
-							data.frame(
-								subject=replicate(nrow(googleData[googleData$comment != "",]), aSubjKey), 
-								site=replicate(nrow(googleData[googleData$comment != "",]), aSiteKey), 
-								date=googleData[googleData$comment != "","date"], 
-								rating=as.character(googleData[googleData$comment != "","rating"]), 
-								text=googleData[googleData$comment != "","comment"]
-							)
-						)											
 					}
 				}else{
 					profileReport <- rbind(profileReport, 
@@ -915,7 +909,6 @@ for (i in 1:length(subjects[["subject_key"]])) {  ### loop over docs  i <- 14  j
 							status= c("Failed")
 						)
 					)
-					next
 				}
 			}			
 			
@@ -1047,6 +1040,7 @@ for (i in 1:length(subjects[["subject_key"]])) {  ### loop over docs  i <- 14  j
 			##debug("END SPECIAL CASE ITEMS")
 	
 			###  Set "_num_prof" = 1
+			
 			subjectSiteProfileData[1, paste0(siteFirstChar,"_num_prof")] = "1"	      			
 			##debug("SubjectSiteProfileData: ")
 			##debug(subjectSiteProfileData)

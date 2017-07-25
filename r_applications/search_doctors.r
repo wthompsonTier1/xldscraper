@@ -180,16 +180,24 @@
 				
 				
 				location_parts <- tolower(trimws(strsplit(location, ",")[[1]]))
-				returnObj$additional_search_params <- paste0(
-					'{"requests":[{"indexName":"vitals_search","params":"query=',
-					paste0('%20',location_parts[1],'%2C%20',location_parts[2],'%20',gsub(' ', '%20',search_term)),
-					'&aroundLatLngViaIP=false&getRankingInfo=true&hitsPerPage=10&facets=*&page=0&attributesToRetrieve=*&facetFilters=%5B%5B%5D%2C%5B%5D%2C%5B%5D%2C%5B%5D%2C%5B%5D%2C%5B%5D%2C%5B%22status%3Aactive%22%5D%5D&advancedSyntax=true"}]}'
-				)
+				geocode_data <- geocode(location)
+
+				returnObj$additional_search_params <- paste0('{"requests":[{"indexName":"vitals_search_v2_swap_prs2","params":"query=', gsub(' ', '%20',search_term), '&hitsPerPage=24&maxValuesPerFacet=1000&page=0&replaceSynonymsInHighlight=false&highlightPreTag=%3Cem%3E&getRankingInfo=true&aroundLatLng=', geocode_data$lat, '%2C', geocode_data$lon, '&aroundLatLngViaIP=false&aroundRadius=all"}]}')
+				
+			
 				
 				postResult <- POST(site_url, body= returnObj$additional_search_params, encode="form")
+				
+				#debug(postResult)
+				
 				content <- content(postResult, "parsed")
 				
+				#debug("CONTENT:")
+				#debug(content)				
+				
 				docs <- content$results[[1]]$hits
+				
+				#debug(docs)
 				docCount <- length(docs)
 				
 				profile_names <- c()
@@ -216,6 +224,12 @@
 						profile_specialties[d] <- specialty
 					}
 				}
+				
+				
+				#debug("NAMES:")
+				#debug(profile_names)
+				#debug(profile_urls)
+				
 				
 				returnObj$data <- data.frame(
 					profileName = profile_names,
