@@ -424,15 +424,17 @@
 				
 				#NEW 
 				pageCode <- paste(readLines(fb_search_url, warn=FALSE), collapse="\n")
-				debug("PAGECODE");
-				debug(pageCode);
-				stop()
+
 				codeTagMatch <- regexpr("<code[^>]*><!-- <div",pageCode)	
 				pageCode <- substr(pageCode, codeTagMatch[1] + attr(codeTagMatch, "match.length") - 5, nchar(pageCode))
 				
 				endCodeTagMatch <- regexpr("--></code>", pageCode)
 				pageCode <- substr(pageCode, 1, endCodeTagMatch[1] - 1)
-				
+					
+				debug("Page Code:")
+				debug(pageCode)	
+				stop()
+								
 				fb_doc <- getHTML(pageCode)
 				
 				debug("Facebook Doc:")
