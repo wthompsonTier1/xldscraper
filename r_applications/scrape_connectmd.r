@@ -944,7 +944,7 @@ for (i in 1:length(subjects[["subject_key"]])) {  ### loop over docs  i <- 14  j
 					)
 					next
 				}			
-				response <- readLines(ajaxURL)
+				#response <- readLines(ajaxURL)
 				
 				response <- substr(response, attr(regexpr("[^\\{]*\\{",response), "match.length"), nchar(response))
 				facebookJSON <- fromJSON(response)
