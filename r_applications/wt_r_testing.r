@@ -56,7 +56,35 @@
 #	TEST APPLICATION CODE BELOW	    #
 #####################################	
 
+
+
+
 url <- "https://www.google.com/search?q=facebook+cincinnati+eye+institute+cincinnati%2C+oh"
 searchText <- paste(readLines(url, warn=FALSE), collapse="\n")
-debug(searchText)
+
+bodyTagStart <- regexpr("<body[^>]*>",searchText)
+debug(bodyTagStart)
+
+bodyTagEnd <- regexpr("</body>",searchText)
+debug(bodyTagEnd)
+
+searchText <- str_trim(searchText)
+
+bodyText <- substr(searchText, bodyTagStart[1] + attr(bodyTagStart,"match.length"), bodyTagEnd[1] -1)
+bodyText <- substr(bodyText, regexpr("^(.*?)<script"))
+
+
+
+debug(bodyText)
+
+
+
+
+doc <- read_html(bodyText,verbose=FALSE)
+searchResults <- html_nodes(doc, xpath="//*[@class='g']")
+debug("SearchResults")
+debug(searchResults)
+debug(length(searchResults))
+
+
 
