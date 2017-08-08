@@ -56,8 +56,10 @@
 #	TEST APPLICATION CODE BELOW	    #
 #####################################	
 
+url <- "https://www.facebook.com/search/top/?q=pinball+jones+fort+collins,+colorado&opensearch=1"
+searchText <- paste(readLines(url, warn=FALSE), collapse="\n")
 
-
+stop()
 
 url <- "https://www.google.com/search?q=facebook+cincinnati+eye+institute+cincinnati%2C+oh"
 searchText <- paste(readLines(url, warn=FALSE), collapse="\n")
