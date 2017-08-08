@@ -58,6 +58,7 @@
 
 url <- "https://www.facebook.com/search/top/?q=pinball+jones+fort+collins,+colorado&opensearch=1"
 searchText <- paste(readLines(url, warn=FALSE), collapse="\n")
+debug(searchText)
 
 stop()
 
