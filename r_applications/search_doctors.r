@@ -378,101 +378,103 @@
 				)	        
 			},
 	        "facebook"={
-		        ###
-		        ### 	FACEBOOK
-				###		
-				###
-
-				# sample URL:  
-				#https://www.facebook.com/public?query=st+elizabeth+healthcare+edgewood%2C+ky&type=pages
-				#https://www.facebook.com/search/top/?q=pinball+jones+fort+collins%2C+colorado&opensearch=1
-				
-				debug("Facebook Location:")
-				debug(location)
-			
-				#  if the location has a comma, split the location and trim both parts
-				#  if the second part is 2 characters, then call the getStateFull() function
-				#  if not, then use the location as is
-				location_parts <- tolower(trimws(strsplit(location, ",")[[1]]))
-				if(length(location_parts) == 2 & nchar(location_parts[2]) == 2){
-					locationStr <- paste0(location_parts[1],", ",getStateFull(location_parts[2]))
-				}else{
-					locationStr <- location
-				}
-				
-				debug("Location Str:")
-				debug(locationStr)
-				
-				searchTermStr <- gsub(" ", "+", trimws(search_term))
-				
-				
-				#/search/top/?q=pinball+jones+fort+collins%2C+colorado&opensearch=1				
-				#returnObj$additional_search_params <- gsub(" ","+",paste0("query=",trimws(search_term)," ",locationStr,"&type=pages"))
-				
-				
-				returnObj$additional_search_params <- gsub(" ","+",paste0("q=",trimws(search_term)," ",locationStr,"&opensearch=1"))
+		        if(FALSE){
+			        ###
+			        ### 	FACEBOOK
+					###		
+					###
 	
-				fb_search_url <-paste0(site_url, returnObj$additional_search_params)
-				
-				debug("Facebook search url")
-				debug(fb_search_url)
-			
-				profile_names <- c()
-				profile_urls <- c()
-				profile_imgs <- c()
-				profile_specialties <- c()		
-				
-				#NEW 
-				pageCode <- paste(readLines(fb_search_url, warn=FALSE), collapse="\n")
-
-				codeTagMatch <- regexpr("<code[^>]*><!-- <div",pageCode)	
-				pageCode <- substr(pageCode, codeTagMatch[1] + attr(codeTagMatch, "match.length") - 5, nchar(pageCode))
-				
-				endCodeTagMatch <- regexpr("--></code>", pageCode)
-				pageCode <- substr(pageCode, 1, endCodeTagMatch[1] - 1)
+					# sample URL:  
+					#https://www.facebook.com/public?query=st+elizabeth+healthcare+edgewood%2C+ky&type=pages
+					#https://www.facebook.com/search/top/?q=pinball+jones+fort+collins%2C+colorado&opensearch=1
 					
-				debug("Page Code:")
-				debug(pageCode)	
-				stop()
-								
-				fb_doc <- getHTML(pageCode)
+					debug("Facebook Location:")
+					debug(location)
 				
-				debug("Facebook Doc:")
-				debug(fb_doc)
-			
+					#  if the location has a comma, split the location and trim both parts
+					#  if the second part is 2 characters, then call the getStateFull() function
+					#  if not, then use the location as is
+					location_parts <- tolower(trimws(strsplit(location, ",")[[1]]))
+					if(length(location_parts) == 2 & nchar(location_parts[2]) == 2){
+						locationStr <- paste0(location_parts[1],", ",getStateFull(location_parts[2]))
+					}else{
+						locationStr <- location
+					}
+					
+					debug("Location Str:")
+					debug(locationStr)
+					
+					searchTermStr <- gsub(" ", "+", trimws(search_term))
+					
+					
+					#/search/top/?q=pinball+jones+fort+collins%2C+colorado&opensearch=1				
+					#returnObj$additional_search_params <- gsub(" ","+",paste0("query=",trimws(search_term)," ",locationStr,"&type=pages"))
+					
+					
+					returnObj$additional_search_params <- gsub(" ","+",paste0("q=",trimws(search_term)," ",locationStr,"&opensearch=1"))
+		
+					fb_search_url <-paste0(site_url, returnObj$additional_search_params)
+					
+					debug("Facebook search url")
+					debug(fb_search_url)
 				
-				################################
-				## PROFILE NAMES:
-				################################
-				profile_names <- html_text(html_nodes(fb_doc,xpath="//*[@id='all_search_results']/div/div/div/div/div[1]/div/div/div[2]/div/a/div"))
-				###################
-				##  Profile URLS
-				###################
-				profile_urls <- html_attr(html_nodes(fb_doc,xpath="//*[@id='all_search_results']/div/div/div/div/div[1]/div/div/div[2]/div/a"), "href")
-				profile_urls <- gsub("https://www.facebook.com", "", profile_urls)
-				###################
-				##  FB Page IDS
-				####################
-				pageids <- html_attr(html_nodes(fb_doc,xpath="//*[@id='all_search_results']/div/div"), "data-bt")	
-				beginPageIDs <- regexpr("\"id\":",pageids)				
-				pageids <- substr(pageids, beginPageIDs + attr(beginPageIDs, "match.length"), nchar(pageids))
-				endPageIDs <- regexpr(",", pageids)
-				pageids <- substr(pageids, 1, endPageIDs - 1)
+					profile_names <- c()
+					profile_urls <- c()
+					profile_imgs <- c()
+					profile_specialties <- c()		
+					
+					#NEW 
+					pageCode <- paste(readLines(fb_search_url, warn=FALSE), collapse="\n")
+	
+					codeTagMatch <- regexpr("<code[^>]*><!-- <div",pageCode)	
+					pageCode <- substr(pageCode, codeTagMatch[1] + attr(codeTagMatch, "match.length") - 5, nchar(pageCode))
+					
+					endCodeTagMatch <- regexpr("--></code>", pageCode)
+					pageCode <- substr(pageCode, 1, endCodeTagMatch[1] - 1)
+						
+					debug("Page Code:")
+					debug(pageCode)	
+					stop()
+									
+					fb_doc <- getHTML(pageCode)
+					
+					debug("Facebook Doc:")
+					debug(fb_doc)
 				
-
-				##  Add pageids to end of profile_urls	
-				profile_urls <- paste0(profile_urls,"?pageid=",pageids)
-								
-				debug("Profile URLS:")
-				debug(profile_urls)				
-								
-				returnObj$data <- data.frame(
-					profileName = profile_names,
-					profileSpecialty = replicate(length(profile_names), ""),
-					profileUrl  = profile_urls,
-					profileImg  = replicate(length(profile_names), ""),
-					stringsAsFactors = FALSE
-				)
+					
+					################################
+					## PROFILE NAMES:
+					################################
+					profile_names <- html_text(html_nodes(fb_doc,xpath="//*[@id='all_search_results']/div/div/div/div/div[1]/div/div/div[2]/div/a/div"))
+					###################
+					##  Profile URLS
+					###################
+					profile_urls <- html_attr(html_nodes(fb_doc,xpath="//*[@id='all_search_results']/div/div/div/div/div[1]/div/div/div[2]/div/a"), "href")
+					profile_urls <- gsub("https://www.facebook.com", "", profile_urls)
+					###################
+					##  FB Page IDS
+					####################
+					pageids <- html_attr(html_nodes(fb_doc,xpath="//*[@id='all_search_results']/div/div"), "data-bt")	
+					beginPageIDs <- regexpr("\"id\":",pageids)				
+					pageids <- substr(pageids, beginPageIDs + attr(beginPageIDs, "match.length"), nchar(pageids))
+					endPageIDs <- regexpr(",", pageids)
+					pageids <- substr(pageids, 1, endPageIDs - 1)
+					
+	
+					##  Add pageids to end of profile_urls	
+					profile_urls <- paste0(profile_urls,"?pageid=",pageids)
+									
+					debug("Profile URLS:")
+					debug(profile_urls)				
+									
+					returnObj$data <- data.frame(
+						profileName = profile_names,
+						profileSpecialty = replicate(length(profile_names), ""),
+						profileUrl  = profile_urls,
+						profileImg  = replicate(length(profile_names), ""),
+						stringsAsFactors = FALSE
+					)
+				}
 			}
 		)
 		

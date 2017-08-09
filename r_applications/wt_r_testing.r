@@ -56,14 +56,24 @@
 #	TEST APPLICATION CODE BELOW	    #
 #####################################	
 
-url <- "https://www.facebook.com/search/top/?q=pinball+jones+fort+collins,+colorado&opensearch=1"
-searchText <- paste(readLines(url, warn=FALSE), collapse="\n")
-debug(searchText)
+#url <- "https://www.facebook.com/search/top/?q=pinball+jones+fort+collins,+colorado&opensearch=1"
+#searchText <- paste(readLines(url, warn=FALSE), collapse="\n")
+#debug(searchText)
 
-stop()
+#stop()
 
 url <- "https://www.google.com/search?q=facebook+cincinnati+eye+institute+cincinnati%2C+oh"
 searchText <- paste(readLines(url, warn=FALSE), collapse="\n")
+
+
+######
+#	using code in the R parser, read in the google search and find the profile urls
+#   test to make sure we can access the fb profiles without logging in
+#   if we can get to profiles, then loop through urls and grab pageids
+#
+#	Then we need to move onto ratemds
+
+
 
 bodyTagStart <- regexpr("<body[^>]*>",searchText)
 debug(bodyTagStart)
