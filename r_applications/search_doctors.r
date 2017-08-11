@@ -379,6 +379,24 @@
 			},
 	        "facebook"={
 		        if(FALSE){
+			        ####
+			        #	I have disabled the facebook search for now due to issues with captcha/security type pages being 
+			        #	served up when trying to access public pages.  This is suspected to be happening because  FB 
+			        #	doesn't want us getting to the data in this manner.
+			        #	
+			        #	Potential solution:
+			        #	Go back to using the FB graph api.  This would require a few days of testing to make sure it is 
+			        #	even possible.
+			        #		(1) use the "search" endpoint in the api to look for pages matching names submitted
+			        #		(2) use the pageid of returned items to find url of facebook page so we can show in search results
+			        #		(3) MIGHT be able to use this page id and the scraper may work at this point.
+			        #		(4) If not, then we need to look into how to automatically ask for a page access_token so that we can access the "ratings" endpoint of the api for the page.  
+			        #	Read this:  https://stackoverflow.com/questions/17315839/get-facebook-graph-api-page-review/20797173#20797173
+			        #	NOTE:  It doesn't seem like i will be able to get page access tokens for OTHER pages.  Hopefully the search 
+			        #   solution mentioned above will work (item #1) using the search endpoint to find the pages.
+			        #
+			        
+			        ####
 			        ###
 			        ### 	FACEBOOK
 					###		
