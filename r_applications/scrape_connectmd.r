@@ -363,11 +363,61 @@ for (i in 1:length(subjects[["subject_key"]])) {  ### loop over docs  i <- 14  j
 			### Handle special case data elements without the loop
 			##debug("BEGIN SPECIAL CASE ITEMS")
 			if (aSiteKey == "ratemds") {
+				
+								
+				###  Create the phantomjs file
+				script_template <- paste(readLines('../../r_applications/phantom_js_template_ratemds.txt', warn=FALSE), collapse="\n")
+				phantom_output_file <- paste0(scrape_timestamp,"_phantom_response_", profile_id, "_firstpage", ".html")
+				script_template <- paste0("var output_file = '", phantom_output_file,"';\n", script_template)
+				script_template <- paste0("var source_url = '",trimws(aURL),"';\n", script_template)
+				
+				# Create the phantom js file
+				phantom_input_file <- paste0(scrape_timestamp, "_phantom_input_", profile_id, "_firstpage", ".js")
+				write.table(script_template, 
+				            file= phantom_input_file, 
+				            quote = FALSE,
+				            col.names = FALSE,
+				            row.names = FALSE)							
+				
+				# Run phantom on the input.js file
+				system(paste0(phantomjs_path, "/bin/phantomjs ", phantom_input_file))
+				
+				debug("DONE PHANTOM JS")
+				
+				firstPageDoc <- read_html(phantom_output_file, verbose=FALSE)
+
+				subjectSiteProfileData[1,"r_rating"] 
+				
+				subjectSiteProfileData[1,"r_num_ratings"]
+					
+
+				###  NOTICE:  there are 2 types of pages (doctor and practice), thus we 
+				###  need 2 different xpath expressions;
+				
+				### RATING VALUE
+				tempVal <- getAttributeValue(firstPageDoc, xp='//*[@class="search-item-info"]//*[@class="star-rating"]', element_id="title")				
+				if(tempVal == ""){
+					tempVal <- getAttributeValue(firstPageDoc, xp='//*[@class="search-banner-panel"]//*[@class="star-rating "]', element_id="title")					
+				}
+				subjectSiteProfileData[1,"r_rating"] <- tempVal
+				
+				### NUM RATINGS
+				tempVal <- getTextContent(firstPageDoc, xp='//*[@class="search-item-info"]//*[@class="star-rating-count"]/span[1]')			
+				if(tempVal == ""){
+					tempVal <- getTextContent(firstPageDoc, xp='//*[@class="search-banner-panel"]//*[@class="star-rating-count"]/span[1]/span[1]')					
+				}
+				subjectSiteProfileData[1,"r_num_ratings"] <- tempVal				
+				
 				subjectSiteProfileData[1,"r_num_reviews"] <- subjectSiteProfileData[1,"r_num_ratings"]
+				
+				
 				if(subjectSiteProfileData[1,"r_num_ratings"] >0){
 					tmpRatsRvws <- getRMDSRatingsReviews(subjectSiteProfileData[1,"r_num_ratings"], aURL)
 					
-			
+					
+					debug("After getting ratings and reviews------>")
+					debug(tmpRatsRvws)					
+					
 					if (is.null(tmpRatsRvws)) tmpRatsRvws <- list(ratings=c(0,0,0,0,0), reviews="") 
 					subjectSiteProfileData[1,"r_pos_reviews"] <- subjectSiteProfileData[1,"r_pos_ratings"] <- tmpRatsRvws$ratings[4] +  tmpRatsRvws$ratings[5] 
 					subjectSiteProfileData[1,"r_neut_reviews"] <- subjectSiteProfileData[1,"r_neut_ratings"] <- tmpRatsRvws$ratings[3] 
@@ -386,7 +436,9 @@ for (i in 1:length(subjects[["subject_key"]])) {  ### loop over docs  i <- 14  j
 							text=reviews[,"text"]
 						)
 					)
-				}				
+				}else{
+					debug("Rate MDS Num ratings is 0")
+				}			
 			} 
 			if (aSiteKey == "vitals") {
 				if (subjectSiteProfileData[1,"v_num_ratings"] > 0) {

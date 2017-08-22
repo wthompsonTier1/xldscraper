@@ -35,8 +35,8 @@ ratemds,r_own_prof,"//*[@id=""ng-app""]/body/div[2]/div[1]/div/div/div/div[2]/di
 ratemds,r_addr_ph_ex,,,,,,
 ratemds,r_addr_ph_correct,,,,,,
 ratemds,r_missing_info,,,,,,
-ratemds,r_rating,"//*[@id=""ng-app""]/body/div[2]/div[1]/div/div/div/div[2]//*[contains(concat("" "", normalize-space(@class), "" ""), ""star-rating "")]",attribute,title,,,title attribute of the node
-ratemds,r_num_ratings,"//*[@id=""ng-app""]/body/div[2]/div[1]/div/div/div/div[2]//*[contains(concat("" "", normalize-space(@class), "" ""), ""star-rating-count"")]/span/span",text,,,,
+ratemds,r_rating,,,,,,
+ratemds,r_num_ratings,,,,,,
 ratemds,r_pos_ratings,"//*[@id=""left-content""]/span/div/span/span[2]/span/span",,title,attribute,div[1]/div[1]/div[2]/span/span,Count of ratings >= 4
 ratemds,r_neut_ratings,"//*[@id=""left-content""]/span/div/span/span[2]/span/span",,title,attribute,div[1]/div[1]/div[2]/span/span,Count of rating = 3
 ratemds,r_neg_ratings,"//*[@id=""left-content""]/span/div/span/span[2]/span/span",,title,attribute,div[1]/div[1]/div[2]/span/span,Count of ratings <= 2

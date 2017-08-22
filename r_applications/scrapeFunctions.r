@@ -263,8 +263,11 @@ getRMDSRatingReviewPage <- function(url) {
 	ratings <- c();
 	reviews <- c();
 	
-	ratingSpans <- html_nodes(html_doc, xpath='//*[@id="left-content"]/span/div/span/span[2]/span/span/span')
+	##ratingSpans <- html_nodes(html_doc, xpath='//*[@id="left-content"]/span/div/span/span[2]/span/span/span')
+	ratingSpans <- html_nodes(html_doc, xpath='//div[@class="ratings"]//span[@class="ratings"]')
 	if(length(ratingSpans) > 0){
+		
+		#debug("<-------- RATING COUNT > 0  ----------->")
 		dates <- trimws(getTextContent(html_doc,'//*[@class="rating"]//*[contains(@class,"rating-comment-created")]/a/span[2]'))
 		dates <- as.character(as.Date(dates,"%B %d, %Y"))
 		ratings <-	trimws(getAttributeValue(html_doc, '//*[@class="rating"]//*[@class="star-rating"]', 'title'))

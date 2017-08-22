@@ -395,6 +395,15 @@
 			        #	NOTE:  It doesn't seem like i will be able to get page access tokens for OTHER pages.  Hopefully the search 
 			        #   solution mentioned above will work (item #1) using the search endpoint to find the pages.
 			        #
+			        #	Get a Facebook app access token:
+			        #   https://smashballoon.com/custom-facebook-feed/access-token/
+			        #
+			        #	NOTE:  FB Scrape still works.  If we can find the pageids for FB either through
+			        #	screen scrape of search api, then we can still scrape FB data.
+			        #   see fb_scrape_test_pinballjones and fb_scrape_test_cei in working directory
+			        #	on local machine.
+			        
+			        
 			        
 			        ####
 			        ###
