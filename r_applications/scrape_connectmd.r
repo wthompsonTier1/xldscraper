@@ -166,7 +166,7 @@ addToFileList("Sites.csv", "Sites.csv", "CSV file containing the details about a
 subjects <- read.csv("Subjects.csv", header = TRUE, sep = ",", stringsAsFactors = FALSE)  ### subject names and ids
 names(subjects)[1] <- "subject_key"
 names(subjects)[2] <- "subject_name"
-subjects["subject_key"] <- lapply(subjects["subject_key"],function(x){tolower(x)})
+subjects["subject_key"] <- lapply(subjects["subject_key"],fix_subject_keys)
 addToFileList("Subjects.csv", "Subjects.csv", "CSV file containing the subject data used in the scrape.", "source")
 
 
@@ -175,10 +175,9 @@ subj_site_id <- read.csv("Subject_Site_Identifiers.csv", header = TRUE, sep = ",
 names(subj_site_id)[1] <- "subject_key"
 names(subj_site_id)[2] <- "site_key"
 names(subj_site_id)[3] <- "site_subject_ident"
-subj_site_id["subject_key"] <- lapply(subj_site_id["subject_key"],function(x){tolower(x)})
+subj_site_id["subject_key"] <- lapply(subj_site_id["subject_key"],fix_subject_keys)
 subj_site_id["site_key"] <- lapply(subj_site_id["site_key"],function(x){tolower(x)})
 addToFileList("Subject_Site_Identifiers.csv", "Subject_Site_Identifier.csv", "CSV file containing all profiles included in the scrape.", "source")
-
 
 
 
