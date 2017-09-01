@@ -983,7 +983,7 @@ for (i in 1:length(subjects[["subject_key"]])) {  ### loop over docs  i <- 14  j
 				
 				debug("Facebook ajax URL")
 				debug(ajaxURL)
-				response <- tryCatch(readLines(ajaxURL), error= function(e){return (FALSE)})
+				response <- tryCatch(readLines(ajaxURL, warn=FALSE), error= function(e){return (FALSE)})
 				if(is.logical(response)){
 					profileReport <- rbind(profileReport, 
 						data.frame(
@@ -1004,19 +1004,23 @@ for (i in 1:length(subjects[["subject_key"]])) {  ### loop over docs  i <- 14  j
 				#debug(facebookJSON)
 				
 				
-				
 				html <- read_html(facebookJSON$domops[[1]][[4]]$`__html`,verbose=FALSE)
+
 				
 				if(!grepl("No reviews to show",html)){
-					
+						
 					
 					textComments <- html_text(html_nodes(html, xpath="//div/div/div[2]/div[1]/div[2]/div[2]"))
-					ratings <- substr(html_text(html_nodes(html, xpath="//div/div/div[2]/div[1]/div[2]/div[1]/div/div/div[2]/div/div/div[2]/h5/span/span/i/u")),1,1)					
+
 					
-					dates <-html_attr(html_nodes(html,xpath="//div/div/div[2]/div[1]/div[2]/div[1]/div/div/div[2]/div/div/div[2]/div/span[3]/span/a/abbr"),"title")
+					ratings <- substr(html_text(html_nodes(html, xpath="//div/div/div[2]/div[1]/div[2]/div[1]/div/div/div[2]/div/div/div[2]/h5/span/span/i/u")),1,1)		
+					
+		
+					
+					#dates <-html_attr(html_nodes(html,xpath="//div/div/div[2]/div[1]/div[2]/div[1]/div/div/div[2]/div/div/div[2]/div/span[3]/span/a/abbr"),"title")
 	
-					dates <-format(as.Date(html_attr(html_nodes(html,xpath="//div/div/div[2]/div[1]/div[2]/div[1]/div/div/div[2]/div/div/div[2]/div/span[3]/span/a/abbr"),"title"), format="%A, %B %d, %Y "), format="%m/%d/%y")	
-	
+					dates <-format(as.Date(html_attr(html_nodes(html,xpath="//div/div/div[2]/div[1]/div[2]/div[1]/div/div/div[2]/div/div/div[2]/div/span[3]/span/span/a/abbr"),"title"), format="%A, %B %d, %Y "), format="%m/%d/%y")	
+
 						
 					f_df <- data.frame(date=dates, rating=ratings, comment=textComments, stringsAsFactors=FALSE)
 			
