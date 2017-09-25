@@ -24,6 +24,11 @@ fix_subject_keys <- function(x){
 }
 
 
+sitename_by_colname <- function(x){
+  siteid <- substr(x,1, 2)
+  switch(siteid, "g_" = "google", "f_" = "facebook", "y_" = "yelp", "r_" = "ratemds", "h_" = "healthgrades", "v_" = "vitals", "core")
+}
+
 
 
 google_formatDate <- function(x){
