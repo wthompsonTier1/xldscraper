@@ -440,20 +440,41 @@ for (i in 1:length(subjects[["subject_key"]])) {  ### loop over docs  i <- 14  j
 				}			
 			} 
 			if (aSiteKey == "vitals") {
-				if (subjectSiteProfileData[1,"v_num_ratings"] > 0) {
-					tmpRatsRvws <- getVitalsRatingsReviews(subjectSiteProfileData[1,"v_num_ratings"], subjectSiteProfileData[1,"v_num_reviews"], aURL)
-					subjectSiteProfileData[1,"v_pos_ratings"] <- tmpRatsRvws$ratings[4] +  tmpRatsRvws$ratings[5] 
-					subjectSiteProfileData[1,"v_neut_ratings"] <- tmpRatsRvws$ratings[3] 
-					subjectSiteProfileData[1,"v_neg_ratings"] <- tmpRatsRvws$ratings[1] +  tmpRatsRvws$ratings[2]
-					
-					reviews <- tmpRatsRvws$reviews
-					
-					#debug("VITAL REVIEWS")
-					#debug(reviews)
-					
-					
-					#debug(reviews[reviews$text != "",])
+			  ### If v_rating, v_num_ratings, v_num_reviews contain characters other than
+			  ### numbers, strip the characters
+			  if(grepl("[^0-9.]",subjectSiteProfileData[1,"v_rating"])){
+			    subjectSiteProfileData[1,"v_rating"] <- gsub("[^0-9.]","",subjectSiteProfileData[1,"v_rating"])			    
+			  }
+			  
+			  if(grepl("[^0-9.]",subjectSiteProfileData[1,"v_num_ratings"])){
+			    subjectSiteProfileData[1,"v_num_ratings"] <- gsub("[^0-9.]","",subjectSiteProfileData[1,"v_num_ratings"])			    
+			  }
+			  
+			  if(grepl("[^0-9.]",subjectSiteProfileData[1,"v_num_reviews"])){
+			    subjectSiteProfileData[1,"v_num_reviews"] <- gsub("[^0-9.]","",subjectSiteProfileData[1,"v_num_reviews"])			    
+			  }			  
 
+  			if (subjectSiteProfileData[1,"v_num_ratings"] > 0) {
+					tmpRatsRvws <- getVitalsRatingsReviews(subjectSiteProfileData[1,"v_num_ratings"], aURL)
+					#subjectSiteProfileData[1,"v_pos_ratings"] <- tmpRatsRvws$ratings[4] +  tmpRatsRvws$ratings[5] 
+					#subjectSiteProfileData[1,"v_neut_ratings"] <- tmpRatsRvws$ratings[3] 
+					#subjectSiteProfileData[1,"v_neg_ratings"] <- tmpRatsRvws$ratings[1] +  tmpRatsRvws$ratings[2]
+					
+					reviews <- tmpRatsRvws
+					
+					
+					#num5 <- nrow(reviewInfo[as.numeric(reviewInfo$rating) >= 4.5,])
+					#num4 <- nrow(reviewInfo[as.numeric(reviewInfo$rating) >= 3.5 & as.numeric(reviewInfo$rating) < 4.5,])
+					#num3 <- nrow(reviewInfo[as.numeric(reviewInfo$rating) >= 2.5 & as.numeric(reviewInfo$rating) < 3.5,])
+					#num2 <- nrow(reviewInfo[as.numeric(reviewInfo$rating) >= 1.5 & as.numeric(reviewInfo$rating) < 2.5,])
+					#num1 <- nrow(reviewInfo[as.numeric(reviewInfo$rating) < 1.5,])					
+
+					subjectSiteProfileData[1,"v_pos_ratings"] <- nrow(reviews[as.numeric(reviews$rating) >= 3.5,])
+					subjectSiteProfileData[1,"v_neut_ratings"] <- nrow(reviews[as.numeric(reviews$rating) >= 2.5 & as.numeric(reviews$rating) < 3.5,])
+					subjectSiteProfileData[1,"v_neg_ratings"] <- nrow(reviews[as.numeric(reviews$rating) < 2.5,])					
+					
+					
+					
 					numReviewRows <- nrow(reviews[reviews$text != "",])
 					if(numReviewRows > 0){
 						masterReviewData <- rbind(masterReviewData, 
@@ -465,9 +486,9 @@ for (i in 1:length(subjects[["subject_key"]])) {  ### loop over docs  i <- 14  j
 								text=reviews[reviews$text != "","text"]
 							)
 						)					
-						subjectSiteProfileData[1,"v_pos_reviews"] <- nrow(reviews[reviews$text != "" & as.numeric(reviews$rating) >= 4,])
-						subjectSiteProfileData[1,"v_neut_reviews"] <- nrow(reviews[reviews$text != "" & as.numeric(reviews$rating) == 3,])
-						subjectSiteProfileData[1,"v_neg_reviews"] <- nrow(reviews[reviews$text != "" & as.numeric(reviews$rating) < 3,])
+						subjectSiteProfileData[1,"v_pos_reviews"] <- nrow(reviews[reviews$text != "" & as.numeric(reviews$rating) >= 3.5,])
+						subjectSiteProfileData[1,"v_neut_reviews"] <- nrow(reviews[reviews$text != "" & as.numeric(reviews$rating) >= 2.5 & as.numeric(reviews$rating) < 3.5,])
+						subjectSiteProfileData[1,"v_neg_reviews"] <- nrow(reviews[reviews$text != "" & as.numeric(reviews$rating) < 2.5,])
 					}
 				} else { ### else, number of reviews was zero
 					subjectSiteProfileData[1,"v_pos_ratings"] <- subjectSiteProfileData[1,"v_neut_ratings"] <- subjectSiteProfileData[1,"v_neg_ratings"] <- 0

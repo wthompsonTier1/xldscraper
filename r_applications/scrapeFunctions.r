@@ -369,74 +369,126 @@ getVitalsReviewPage <- function(url)  {
    #revParent <- html_nodes(html_doc, xpath=revNodeXP )
    #revDivNodes <- html_children(revParent)
    
-   revNodeXP <- "//div[contains(@class,'individualReviews')]"
+   revNodeXP <- "//div[contains(@class,'card review')]"
    revNodes <- html_nodes(html_doc, xpath=revNodeXP)
+   
+   #debug("Review Nodes:")
+   #debug(length(revNodes))
+   
+   
+   
+   revDates <- revRatings <- revText <- c();
+   ###  (1)  get and format the revDates.  Each card will have a date
+   ###  (2)  get and format the ratings.  Each card will have a rating
+   ###  (3)  Not each card will have text;  Loop through each and card and either grab the text
+   ###       or add a blank string;  But there must be the same number in revDates, revRatings, revReviews
+   
+   #reviewRatings <- gsub("[^0-9.]", "", trimws(getTextContent(html_doc, "//div[contains(@class,'card review')]//h2")))
+   revRatings <- gsub("[^0-9.]", "", trimws(getTextContent(revNodes, "div/h2")))
+   debug("Ratings:")
+   debug(revRatings)
+
+   #reviewDates <- gsub("[^0-9.]", "", getTextContent(revNodes, "//div[contains(@class,'card review')]//h3"))
+   revDates <- as.character(as.Date(gsub("st,|nd,|rd,|th,", ",", getTextContent(revNodes, "div/h3")), "%B %d, %Y"))
+   debug("Dates:")
+   debug(revDates)
+   
+   
+   #reviewText <- getTextContent(revNodes, "div[3]//p")
+   #debug(reviewText)
+   
+   textRegex <- "div[3]/div[1]/div[1]/p"
+   for (i in 1:length(revNodes)){
+     node <- revNodes[i]
+     commentText <- ""
+     if(getExistance(node,textRegex)){
+       commentText <- trimws(getTextContent(node, textRegex))
+     }
+     revText[length(revText)+1] <- commentText
+   }
+
+   debug("revText:")
+   debug(revText)
+
    ##debug("Number of reviews on this page:")
    ##debug(length(revNodes))
    
    ## Get the review date  //*[@id="reviewPage"]/div[4]/div[2]/div[1]/div[1]/div[2]/div
-   reviewDate <- as.character(as.Date(gsub("st,|nd,|rd,|th,", ",", getTextContent(revNodes, 'div[1]/div[2]/div')), "%B %d, %Y"))
+   #reviewDate <- as.character(as.Date(gsub("st,|nd,|rd,|th,", ",", getTextContent(revNodes, 'div[1]/div[2]/div')), "%B %d, %Y"))
    
    ## Get the review rating  //*[@id="reviewPage"]/div[4]/div[2]/div[1]/div[1]/div[1]/span[2]
-   reviewRating <- gsub(" of .*", "", getTextContent(revNodes, 'div[1]/div[1]/span[2]'))
+   #//div[contains(@class,'card review')]//h2
+   #reviewRating <- gsub(" of .*", "", getTextContent(revNodes, 'div[1]/div[1]/span[2]'))
+   #reviewRating <- gsub("[^0-9.]", "", getTextContent(revNodes, "//div[contains(@class,'card review')]//h2"))
    ##reviewRating <- gsub(pattern = "\n", replacement = "", reviewRating, fixed = TRUE )
-   reviewRating <- str_trim(reviewRating)   
+   #reviewRating <- str_trim(reviewRating)   
    
+   #debug("ReviewRating:")
+   #debug(reviewRating)
+   #stop()
    ## Get the review text
-   reviewText <- getTextContent(revNodes, 'div[3]/div/div') 
-   reviewText <- gsub(pattern = "\n", replacement = "", reviewText, fixed = TRUE )
-   reviewText <- str_trim(reviewText)
+   #reviewText <- getTextContent(revNodes, 'div[3]/div/div') 
+   #reviewText <- gsub(pattern = "\n", replacement = "", reviewText, fixed = TRUE )
+   #reviewText <- str_trim(reviewText)
    
 
-   return(data.frame(date=reviewDate, rating=reviewRating, text=reviewText, stringsAsFactors=FALSE))
+   return(data.frame(date=revDates, rating=revRatings, text=revText, stringsAsFactors=FALSE))
 }
 ### getVitalsReviewPage("http://www.vitals.com/doctors/Dr_Franklin_Richards/reviews?page=1")
 
 
-getVitalsRatingsReviews <- function(numRatings, numReviews, url) { 
+getVitalsRatingsReviews <- function(numRatings, url) { 
    numRatings <- as.numeric(numRatings)
-   numReviews <- as.numeric(numReviews)
+   #numReviews <- as.numeric(numReviews)
    
-   if (is.na(numReviews) | is.null(numReviews)) numReviews <- 0
+  # if (is.na(numRatings) | is.null(numRatings)) numRatings <- 0
    aURL <- gsub(pattern = ".html", replacement = "/reviews", url, fixed = TRUE )
    
+#   xp5 <- '//*[@id="reviewPage"]/div[2]/div/div/div[1]/div/ul/li[1]/div[2]/div[2]/span'
+#   xp4 <- '//*[@id="reviewPage"]/div[2]/div/div/div[1]/div/ul/li[2]/div[2]/div[2]/span'
+#   xp3 <- '//*[@id="reviewPage"]/div[2]/div/div/div[1]/div/ul/li[3]/div[2]/div[2]/span'
+#   xp2 <- '//*[@id="reviewPage"]/div[2]/div/div/div[1]/div/ul/li[4]/div[2]/div[2]/span'
+#   xp1 <- '//*[@id="reviewPage"]/div[2]/div/div/div[1]/div/ul/li[5]/div[2]/div[2]/span'
+
+   #xp5 <- '//*[@class="card ratings"]//li[@class="rating-5"][1]/span'
+   #xp4 <- '//*[@class="card ratings"]//li[@class="rating-4"][1]/span'
+   #xp3 <- '//*[@class="card ratings"]//li[@class="rating-3"][1]/span'
+   #xp2 <- '//*[@class="card ratings"]//li[@class="rating-2"][1]/span'
+   #xp1 <- '//*[@class="card ratings"]//li[@class="rating-1"][1]/span'   
    
-   xp5 <- '//*[@id="reviewPage"]/div[2]/div/div/div[1]/div/ul/li[1]/div[2]/div[2]/span'
-   xp4 <- '//*[@id="reviewPage"]/div[2]/div/div/div[1]/div/ul/li[2]/div[2]/div[2]/span'
-   xp3 <- '//*[@id="reviewPage"]/div[2]/div/div/div[1]/div/ul/li[3]/div[2]/div[2]/span'
-   xp2 <- '//*[@id="reviewPage"]/div[2]/div/div/div[1]/div/ul/li[4]/div[2]/div[2]/span'
-   xp1 <- '//*[@id="reviewPage"]/div[2]/div/div/div[1]/div/ul/li[5]/div[2]/div[2]/span'
    html_doc <- read_html(aURL, verbose=FALSE)
+
+   #ratingDistribution <- c("0","0","0","0","0")
+   #ratingDistribution[5] <- getTextContent(html_doc, xp5) 
+   #ratingDistribution[4] <- getTextContent(html_doc, xp4)
+   #ratingDistribution[3] <- getTextContent(html_doc, xp3)
+   #ratingDistribution[2] <- getTextContent(html_doc, xp2)
+   #ratingDistribution[1] <- getTextContent(html_doc, xp1)
+   #ratingDistribution <- as.numeric(gsub(pattern = "%", replacement = "", ratingDistribution, fixed = TRUE ))
+  
+
+   #resultRatings <- round((numRatings * tmpRating / 100), digits = 0)
    
-   tmpRating <- c("0","0","0","0","0")
-   tmpRating[5] <- getTextContent(html_doc, xp5) 
-   tmpRating[4] <- getTextContent(html_doc, xp4)
-   tmpRating[3] <- getTextContent(html_doc, xp3)
-   tmpRating[2] <- getTextContent(html_doc, xp2)
-   tmpRating[1] <- getTextContent(html_doc, xp1)
-   tmpRating <- as.numeric(gsub(pattern = "%", replacement = "", tmpRating, fixed = TRUE ))
-      
-   resultRatings <- round((numRatings * tmpRating / 100), digits = 0)
-   
-   reviewInfo <- data.frame(date=c(), rating=c(), text=c(), stringsAsFactors=FALSE)
+   reviewData <- data.frame(date=c(), rating=c(), text=c(), stringsAsFactors=FALSE)
    ##resultReviews <- vector("character")
-   if (numReviews > 0) {
-      numPages <- ceiling(numReviews / 10)
+   if (numRatings > 0) {
+      numPages <- ceiling(numRatings / 12)
+      debug("Num of pages:")
+      debug(numPages)
       for (i in 1:numPages) {
          pageURL <- paste0(aURL, "?page=", (i-1))
-         pageReviews <- getVitalsReviewPage(pageURL) 
-         reviewInfo <- rbind(reviewInfo, pageReviews)
-         ##resultReviews <- c(resultReviews, pageReviews )
+         pageReviews <- getVitalsReviewPage(pageURL)
+         reviewData <- rbind(reviewData, pageReviews)
       }
    }
    debug("REVIEWS:")
-   debug(reviewInfo)
+   debug(reviewData)
    
    
    
    
-   result <- list(ratings=resultRatings, reviews=reviewInfo) 
-   return( result )
+   #result <- list(ratings=resultRatings, reviews=reviewInfo) 
+   return( reviewData )
 }
 
 

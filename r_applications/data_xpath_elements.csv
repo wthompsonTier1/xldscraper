@@ -40,22 +40,22 @@ ratemds,r_num_ratings,,,,,,
 ratemds,r_pos_ratings,"//*[@id=""left-content""]/span/div/span/span[2]/span/span",,title,attribute,div[1]/div[1]/div[2]/span/span,Count of ratings >= 4
 ratemds,r_neut_ratings,"//*[@id=""left-content""]/span/div/span/span[2]/span/span",,title,attribute,div[1]/div[1]/div[2]/span/span,Count of rating = 3
 ratemds,r_neg_ratings,"//*[@id=""left-content""]/span/div/span/span[2]/span/span",,title,attribute,div[1]/div[1]/div[2]/span/span,Count of ratings <= 2
-ratemds,r_num_reviews,,,,,,"Ratemds doesn’t allow you to leave a rating without leaving at least a 50 character review.  So, the value for # Ratings should be used for the # Reviews also"
+ratemds,r_num_reviews,,,,,,"Ratemds doesn?t allow you to leave a rating without leaving at least a 50 character review.  So, the value for # Ratings should be used for the # Reviews also"
 ratemds,r_pos_reviews,"//*[@id=""left-content""]/span/div/span/span[2]/span/span",,,text,div[1]/div[2]/p[1]/span,Count of pos reviews
 ratemds,r_neut_reviews,"//*[@id=""left-content""]/span/div/span/span[2]/span/span",,,text,div[1]/div[2]/p[1]/span,Count of neut reviews
 ratemds,r_neg_reviews,"//*[@id=""left-content""]/span/div/span/span[2]/span/span",,,text,div[1]/div[2]/p[1]/span,Count of neg reviews
-ratemds,r_neg_addressed,"//*[@id=""left-content""]/span/div/span/span[2]/span/span",,,text,div[1]/div[3]/p[1]/span/span,"Count of negative reviews addressed;  if review is negative, was it addressed"
+ratemds,r_neg_addressed,"//*[@id=""left-content""]/span/div/span/span[2]/span/span",,,text,div[1]/div[3]/p[1]/span/span,"Count of negative reviews addressed;? if review is negative, was it addressed"
 vitals,v_num_prof,,,,,,
 vitals,v_own_prof,,,,,,
 vitals,v_addr_ph_ex,,,,,,
 vitals,v_addr_ph_correct,,,,,,
 vitals,v_missing_info,,,,,,
-vitals,v_rating,"//*[@id=""col-2""]/div/div/div/div/div[2]/div[1]/div/div[1]/a/div/div[1]/span",text,,,,
-vitals,v_num_ratings,"//*[@id=""col-2""]/div/div/div/div/div[2]/div[1]/div/div[1]/a/div/div[2]/ul/li[1]/span",text,,,,
+vitals,v_rating,"//*[@class=""card quick-facts""]//ul/li[contains(@class,""overall-rating"")]/a/span",text,,,,
+vitals,v_num_ratings,"//*[@class=""card quick-facts""]//ul/li[contains(@class,""overall-rating"")]/a/div[@class=""rating-links""]",text,,,,
 vitals,v_pos_ratings,,,,,,
 vitals,v_neut_ratings,,,,,,
 vitals,v_neg_ratings,,,,,,
-vitals,v_num_reviews,"//*[@id=""col-2""]/div/div/div/div/div[2]/div[1]/div/div[1]/a/div/div[2]/ul/li[2]/span",text,,,,
+vitals,v_num_reviews,"//*[@class=""card quick-facts""]//ul//*[@data-label=""read_reviews""]",text,,,,
 vitals,v_pos_reviews,,,,,,
 vitals,v_neut_reviews,,,,,,
 vitals,v_neg_reviews,,,,,,

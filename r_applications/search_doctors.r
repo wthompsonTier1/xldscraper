@@ -177,20 +177,19 @@
 				
 				###		Setup the additional_params_str.  
 
-				
+				debug("VITALS SEARCH")
 				
 				location_parts <- tolower(trimws(strsplit(location, ",")[[1]]))
 				geocode_data <- geocode(location)
 
-				returnObj$additional_search_params <- paste0('{"requests":[{"indexName":"vitals_search_v2_swap_prs2","params":"query=', gsub(' ', '%20',search_term), '&hitsPerPage=24&maxValuesPerFacet=1000&page=0&replaceSynonymsInHighlight=false&highlightPreTag=%3Cem%3E&getRankingInfo=true&aroundLatLng=', geocode_data$lat, '%2C', geocode_data$lon, '&aroundLatLngViaIP=false&aroundRadius=all"}]}')
+				#returnObj$additional_search_params <- paste0('{"requests":[{"indexName":"vitals_search_v2_swap_prs2","params":"query=', gsub(' ', '%20',search_term), '&hitsPerPage=24&maxValuesPerFacet=1000&page=0&replaceSynonymsInHighlight=false&highlightPreTag=%3Cem%3E&getRankingInfo=true&aroundLatLng=', geocode_data$lat, '%2C', geocode_data$lon, '&aroundLatLngViaIP=false&aroundRadius=all"}]}')
+				returnObj$additional_search_params <- paste0('{"requests":[{"indexName":"vitals_instant_search","params":"query=', gsub(' ', '%20',search_term), '&hitsPerPage=24&maxValuesPerFacet=1000&page=0&replaceSynonymsInHighlight=false&highlightPreTag=%3Cem%3E&getRankingInfo=true&aroundLatLng=', geocode_data$lat, '%2C', geocode_data$lon, '&aroundLatLngViaIP=false&aroundRadius=all"}]}')
 				
 			
 				
 				postResult <- POST(site_url, body= returnObj$additional_search_params, encode="form")
-				
-				#debug(postResult)
-				
 				content <- content(postResult, "parsed")
+				
 				
 				#debug("CONTENT:")
 				#debug(content)				
@@ -740,6 +739,12 @@
 			for (d in 1:numDoctors){
 				searchItem = getSearchItem(searchObj$doctors[d], searchObj$location)
 				for(s in 1:numSites){
+
+				  ###  debug:  vitals  
+          #if(searchObj$sites[s,"site_key"] != "vitals"){
+          #  next
+          #}
+					
 					searchItem_results = search_site(searchItem, searchObj$sites[s,])
 					searchItem$site_results[[length(searchItem$site_results)+1]] = searchItem_results
 				}
