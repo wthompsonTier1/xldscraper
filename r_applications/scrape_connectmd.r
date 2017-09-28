@@ -333,7 +333,7 @@ for (i in 1:length(subjects[["subject_key"]])) {  ### loop over docs  i <- 14  j
 					dataItemXPath <- dataItemList[k,"xpath"]
 					dataItemElementId <- dataItemList[k,"element_id"]
 					if (dataItemElement == "exist") {
-						debug("Existance:")
+						#debug("Existance:")
 						subjectSiteProfileData[1,dataItemName] <- getExistance(html_doc, xp=dataItemXPath)
 						debug(paste0("EXIST:  ", dataItemName, ":"))
 						debug(subjectSiteProfileData[1,dataItemName])
@@ -415,7 +415,7 @@ for (i in 1:length(subjects[["subject_key"]])) {  ### loop over docs  i <- 14  j
 					
 					
 					debug("After getting ratings and reviews------>")
-					debug(tmpRatsRvws)					
+					#debug(tmpRatsRvws)					
 					
 					if (is.null(tmpRatsRvws)) tmpRatsRvws <- list(ratings=c(0,0,0,0,0), reviews="") 
 					subjectSiteProfileData[1,"r_pos_reviews"] <- subjectSiteProfileData[1,"r_pos_ratings"] <- tmpRatsRvws$ratings[4] +  tmpRatsRvws$ratings[5] 
@@ -522,8 +522,8 @@ for (i in 1:length(subjects[["subject_key"]])) {  ### loop over docs  i <- 14  j
 					
 					
 					#  Figure out how to get the star rating based on score information:  looks like the comment score / 2
-					debug("JSON OBJ")
-					debug(jsonObj$Surveys$comments)
+					#debug("JSON OBJ")
+					#debug(jsonObj$Surveys$comments)
 					
 					if(is.null(jsonObj)){
 						profileReport <- rbind(profileReport, 
@@ -564,12 +564,12 @@ for (i in 1:length(subjects[["subject_key"]])) {  ### loop over docs  i <- 14  j
 					comments <- jsonObj$Surveys$comments
 					
 					
-					debug("COMMENTS")
-					debug(comments)
+					#debug("COMMENTS")
+					#debug(comments)
 					
 					ratings <- (comments$score)/2
-					debug(ratings)
-					debug(length(ratings))
+					#debug(ratings)
+					#debug(length(ratings))
 					
 					subjectSiteProfileData[1,"h_num_ratings"] <- length(ratings)
 					subjectSiteProfileData[1,"h_num_reviews"] <- length(ratings)	
@@ -584,15 +584,15 @@ for (i in 1:length(subjects[["subject_key"]])) {  ### loop over docs  i <- 14  j
 						overallSum <- overallSum + (a * length(subset(ratings,ratings == a)))
 					}
 					
-					debug("Overall Sum")
-					debug(overallSum)
+					#debug("Overall Sum")
+					#debug(overallSum)
 					
 					overallRating <- round(overallSum/length(ratings), digits=1)
 					subjectSiteProfileData[1,"h_rating"] <- overallRating
 
 					
-					debug("Profile Data:")
-					debug(subjectSiteProfileData)
+					#debug("Profile Data:")
+					#debug(subjectSiteProfileData)
 					
 					numReviewRows <- length(ratings)
 					if(numReviewRows > 0){
@@ -871,8 +871,8 @@ for (i in 1:length(subjects[["subject_key"]])) {  ### loop over docs  i <- 14  j
 								
 								commentJSON <- fromJSON(phantom_output_file)
 								
-								debug("JSON")
-								debug(commentJSON)
+								#debug("JSON")
+								#debug(commentJSON)
 								
 								commentHtml <- commentJSON[[2]][[2]][1]
 								
@@ -919,8 +919,8 @@ for (i in 1:length(subjects[["subject_key"]])) {  ### loop over docs  i <- 14  j
 									startItemNum <- startItemNum + 10
 								}
 							}
-							debug("Google Data")
-							debug(googleData)
+							#debug("Google Data")
+							#debug(googleData)
 		
 		
 							filename <- paste0("googleData_",profile_id,".csv")
@@ -1024,30 +1024,23 @@ for (i in 1:length(subjects[["subject_key"]])) {  ### loop over docs  i <- 14  j
 				#debug("Facebook JSON")
 				#debug(facebookJSON)
 				
-				
-				html <- read_html(facebookJSON$domops[[1]][[4]]$`__html`,verbose=FALSE)
 
+				html <- read_html(facebookJSON$domops[[1]][[4]]$`__html`,verbose=FALSE)
 				
 				if(!grepl("No reviews to show",html)){
 						
 					
 					textComments <- html_text(html_nodes(html, xpath="//div/div/div[2]/div[1]/div[2]/div[2]"))
-
 					
 					ratings <- substr(html_text(html_nodes(html, xpath="//div/div/div[2]/div[1]/div[2]/div[1]/div/div/div[2]/div/div/div[2]/h5/span/span/i/u")),1,1)		
+				
+					dates <-format(as.Date(gsub("\\sat.*", "", html_attr(html_nodes(html,xpath="//div/div/div[2]/div[1]/div[2]/div[1]/div/div/div[2]/div/div/div[2]/div/span[3]/span//abbr"),"title")), format="%A, %B %d, %Y"), format="%m/%d/%y")
 					
-		
-					
-					#dates <-html_attr(html_nodes(html,xpath="//div/div/div[2]/div[1]/div[2]/div[1]/div/div/div[2]/div/div/div[2]/div/span[3]/span/a/abbr"),"title")
-	
-					dates <-format(as.Date(html_attr(html_nodes(html,xpath="//div/div/div[2]/div[1]/div[2]/div[1]/div/div/div[2]/div/div/div[2]/div/span[3]/span/span/a/abbr"),"title"), format="%A, %B %d, %Y "), format="%m/%d/%y")	
-
-						
 					f_df <- data.frame(date=dates, rating=ratings, comment=textComments, stringsAsFactors=FALSE)
 			
 			
-					debug("DATA FRAME")
-					debug(f_df)
+					#debug("DATA FRAME")
+					#debug(f_df)
 					
 					#debug("Number of positive ratings")
 					#debug(nrow(f_df[as.numeric(f_df$rating) >= 4,]));
