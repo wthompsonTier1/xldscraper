@@ -1355,8 +1355,21 @@ tempDF <- data.frame(
   "text" = masterReviewData[,"text"],
   stringsAsFactors = FALSE
 )
+
+debug("dates:")
+debug(tempDF$review_date)
+stop()
+
+
 ### Convert the dates for database
-tempDF$review_date <- as.Date(tempDF$review_date , "%m/%d/%y")
+tempDF$review_date <- format(as.Date(trimws(tempDF$review_date) , "%m/%d/%y"), "%Y-%m-%d")
+
+
+
+
+
+
+
 rs <- dbWriteTable(db, "scrape_reviews", tempDF, append=TRUE, row.names=FALSE)
 
 
@@ -1364,6 +1377,17 @@ rs <- dbWriteTable(db, "scrape_reviews", tempDF, append=TRUE, row.names=FALSE)
 ### Write Results to database:
 debug("Results:")
 debug(results)
+#########################
+# table: scrape_data
+# scrape_id
+# subject_key
+# column_id
+# value
+#########################
+
+debug(subjects)
+
+
 
 ##  Write the name of the outputFileList file
 cat(outputFile)
