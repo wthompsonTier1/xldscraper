@@ -110,7 +110,6 @@ db_name <- "xld-connectedmd"
 db_user <- "root"
 db_pwd <- "Nn1yhwz4dnq3"
 db_host <- "127.0.0.1"
-db_active <- FALSE
 
 ### Set working directory and load needed functions
 
