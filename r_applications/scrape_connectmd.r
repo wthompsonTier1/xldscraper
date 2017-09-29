@@ -27,8 +27,21 @@ scrape_file_list <- list()
 ### addToFileList:  adds a list item to scrape_file_list containing 
 ### 	filename, title, description
 addToFileList <- function(filename, title, description, type){
-	curList <- scrape_file_list
-	
+	# add file to scrape_files table
+  sql <- paste0(
+    "insert into scrape_files (scrape_id, filename, title, description, type) values (", scrapeId,
+    ", '", filename,
+    "', '", title, 
+    "', '", description, 
+    "', '", type,
+    "')"
+  )
+  debug("File SQL:  ")
+  debug(sql)
+  
+  rs <- dbSendQuery(db, sql)
+  dbClearResult(rs)
+  curList <- scrape_file_list
 	curList[[length(curList)+1]] <- c(filename, title, description, type)
 	scrape_file_list <<- curList
 }
@@ -80,11 +93,23 @@ if (! require(anytime, quietly = TRUE)){
 	library("anytime")
 }
 
+if (! require(RMySQL, quietly = TRUE)){ 
+  install.packages("RMySQL", repos='http://cran.us.r-project.org')
+  library("RMySQL")
+}
 
 
 
 ### GOOGLE API KEY:
 google_api_key <- "AIzaSyDWmQOAoJj3B6-IwCrgbNqEhCgVjzwilNU"
+
+
+###  Default values for production site:  (dev_setting file will overwrite these values if exists)
+phantomjs_version <- "phantomjs-2.1.1-linux-x86_64"
+db_name <- "xld-connectedmd"
+db_user <- "root"
+db_pwd <- "Nn1yhwz4dnq3"
+db_host <- "127.0.0.1"
 
 ### Set working directory and load needed functions
 
@@ -104,9 +129,12 @@ scrape_timestamp <- format(Sys.time(), format="%Y%m%d-%H%M%S")
 args <- commandArgs(TRUE)
 searchDir <- args[1]
 
+clientName <- args[2]
+if(is.null(clientName) | is.na(clientName) | clientName == ""){
+  clientName <- "generic"
+}
 
-### Read subject, site, xpath expression, and other needed data
-report_colnames <- readLines("col_names.txt", warn = FALSE, encoding = "UTF-8")  ### column names for results report
+###  Read in xpath statements for the different data columns;  future database addition
 dataids <- read.csv("data_xpath_elements.csv", header = TRUE, sep = ",", stringsAsFactors = FALSE)  ### data item identifiers, xpath, and html elements 
 
 
@@ -126,14 +154,9 @@ setwd(paste0("../r_working_dir/", searchDir))
 
 ### NOTE:  Need to fix the issue Stephanie Savely brought up in regards to vitals.com issues
 
-
-
-#PhantomJS Default version:
-phantomjs_version <- "phantomjs-2.1.1-linux-x86_64"
-
 # Load the dev settings file if needed
 if(file.exists("../../../dev-environment.txt")){
-	dev_settings <- readLines("../../../dev-environment.txt")
+	dev_settings <- readLines("../../../dev-environment.txt", warn=FALSE)
 	
 	for (i in 1:length(dev_settings)) {
 
@@ -143,24 +166,89 @@ if(file.exists("../../../dev-environment.txt")){
 	}	
 }
 
+### Set up database connection
+db <- dbConnect(MySQL(), user=db_user, password=db_pwd, dbname=db_name, host=db_host)
+dbGetQuery(db, "truncate scrapes")
+dbGetQuery(db, "truncate scrape_data")
+dbGetQuery(db, "truncate scrape_files")
+dbGetQuery(db, "truncate scrape_subjects")
+dbGetQuery(db, "truncate scrape_subject_site_identifiers")
+dbGetQuery(db, "truncate scrape_reviews")
+
+
+### Read subject, site, xpath expression, and other needed data
+
+###  Get the report column information from the database
+report_colnames <- dbGetQuery(db, "select id from data_columns order by display_order")[,1]
+
+
+### Code below was used to populate the data_columns table based on the col_names.txt file.
+### It is commented out now that the data has been stored in the DB
+#
+#report_colnames <- readLines("col_names.txt", warn = FALSE, encoding = "UTF-8")  ### column names for results report
+#
+#tempDF <- data.frame(
+#  "id" = report_colnames, 
+#  "title" = report_colnames,
+#  "type" = unlist(lapply(report_colnames,sitename_by_colname)),
+#  "display_order" = c(1:length(report_colnames)),
+#  stringsAsFactors = FALSE
+#)
+
+
+###  Send output to scrape_debug.txt also 
+scrapeDebugFilename <- paste0(scrape_timestamp, "-scrape_debug.txt")
+sink(scrapeDebugFilename, append=FALSE, split=TRUE)
+
+### Scrape Info:
+debug(paste0("Client Name: ", clientName))
+debug(paste0("Scrape Dir: ", searchDir))
+debug(paste0("Scrape TS: ", scrape_timestamp))
+debug(paste0("Working Dir: ",getwd()))
+
 ###  path to phantom js:
 phantomjs_path <- paste0("../../r_applications/",phantomjs_version)
 debug(paste0("PhantomJS Path: ", phantomjs_path))
 
+#########################################
+### key scrape components to DB
+#########################################
 
-###  Send output to scrape_debug.txt also 
-filename <- paste0(scrape_timestamp, "-scrape_debug.txt")
-addToFileList(filename, "Scrape Debug Output", "Text file containing the entire debug output from the scrape routine.  Helps with tracking down errors.", "debug")
-sink(filename, append=FALSE, split=TRUE)
-debug(paste0("WORKING DIR:  ",getwd()))
-debug(paste0("SEARCH DIR:  ", searchDir))
+### Insert client if needed
+clients <- dbGetQuery(db, paste0("select * from clients where name='",clientName,"'"))
+if(nrow(clients) == 0){
+  rs <- dbSendQuery(db, paste0("insert into clients (name) values ('", clientName, "')"))
+  dbClearResult(rs)
+  clientId <- dbGetQuery(db,"select last_insert_id()")
+}else{
+  clientId <- clients[1,"id"]
+}
+debug(paste0("Client DB Id:", clientId))
+
+### Add row to scrapes
+sql <- paste0("insert into scrapes (client_id, output_dir, scrape_ts_string) values (", clientId, ",'", searchDir, "','", scrape_timestamp,"')")
+debug("SQL:")
+debug(sql)
+rs <- dbSendQuery(db, sql)
+dbClearResult(rs)
+scrapeId <- as.integer(dbGetQuery(db, "select last_insert_id()"))
+
+debug(paste0("DB Scrape ID: ", scrapeId))
+
+
+###  Add Scrape debug to file list
+addToFileList(scrapeDebugFilename, "Scrape Debug Output", "Text file containing the entire debug output from the scrape routine.  Helps with tracking down errors.", "debug")
+
+
+###  NOTE:  we are no longer reading in the sites.csv file.  We have this information in the 
+###  search_sites table.  Also, the search functionality no longer creates the sites.csv file
+#sites <- read.csv("Sites.csv", header = TRUE, sep = ",", stringsAsFactors = FALSE)  ### site names and urls
+#addToFileList("Sites.csv", "Sites.csv", "CSV file containing the details about all the sites included in the scrape routine.", "source")
+sites <- dbReadTable(db, "search_sites")
 
 
 
 
-
-sites <- read.csv("Sites.csv", header = TRUE, sep = ",", stringsAsFactors = FALSE)  ### site names and urls
-addToFileList("Sites.csv", "Sites.csv", "CSV file containing the details about all the sites included in the scrape routine.", "source")
 
 ###Load in subjects.csv file; fix column names; lowercase subject_key values
 subjects <- read.csv("Subjects.csv", header = TRUE, sep = ",", stringsAsFactors = FALSE)  ### subject names and ids
@@ -168,6 +256,18 @@ names(subjects)[1] <- "subject_key"
 names(subjects)[2] <- "subject_name"
 subjects["subject_key"] <- lapply(subjects["subject_key"],fix_subject_keys)
 addToFileList("Subjects.csv", "Subjects.csv", "CSV file containing the subject data used in the scrape.", "source")
+
+###  Add Subject to DB:
+tempDF <- data.frame(
+  "subject_key" = subjects[,"subject_key"], 
+  "subject_name" = subjects[,"subject_name"],
+  "scrape_id" = replicate(nrow(subjects), scrapeId),
+   stringsAsFactors = FALSE
+)
+rs <- dbWriteTable(db, "scrape_subjects", tempDF, append=TRUE, row.names=FALSE)
+
+
+
 
 
 ###Load in subject_site_identifier.csv file; fix column names; lowercase subject_key and site key values
@@ -179,8 +279,16 @@ subj_site_id["subject_key"] <- lapply(subj_site_id["subject_key"],fix_subject_ke
 subj_site_id["site_key"] <- lapply(subj_site_id["site_key"],function(x){tolower(x)})
 addToFileList("Subject_Site_Identifiers.csv", "Subject_Site_Identifier.csv", "CSV file containing all profiles included in the scrape.", "source")
 
+###  Write subj_site_id to database
+tempDF <- data.frame(
+  "subject_key" = subj_site_id[,"subject_key"], 
+  "site_key" = subj_site_id[,"site_key"],
+  "site_subject_ident" = subj_site_id[,"site_subject_ident"],
+  "scrape_id" = replicate(nrow(subj_site_id), scrapeId),
+  stringsAsFactors = FALSE
+)
 
-
+rs <- dbWriteTable(db, "scrape_subject_site_identifiers", tempDF, append=TRUE, row.names=FALSE)
 
 
 debug("<--------  BEGIN:  CSV DATA -------------->")
@@ -333,7 +441,7 @@ for (i in 1:length(subjects[["subject_key"]])) {  ### loop over docs  i <- 14  j
 					dataItemXPath <- dataItemList[k,"xpath"]
 					dataItemElementId <- dataItemList[k,"element_id"]
 					if (dataItemElement == "exist") {
-						#debug("Existance:")
+						debug("Existance:")
 						subjectSiteProfileData[1,dataItemName] <- getExistance(html_doc, xp=dataItemXPath)
 						debug(paste0("EXIST:  ", dataItemName, ":"))
 						debug(subjectSiteProfileData[1,dataItemName])
@@ -415,7 +523,7 @@ for (i in 1:length(subjects[["subject_key"]])) {  ### loop over docs  i <- 14  j
 					
 					
 					debug("After getting ratings and reviews------>")
-					#debug(tmpRatsRvws)					
+					debug(tmpRatsRvws)					
 					
 					if (is.null(tmpRatsRvws)) tmpRatsRvws <- list(ratings=c(0,0,0,0,0), reviews="") 
 					subjectSiteProfileData[1,"r_pos_reviews"] <- subjectSiteProfileData[1,"r_pos_ratings"] <- tmpRatsRvws$ratings[4] +  tmpRatsRvws$ratings[5] 
@@ -440,41 +548,20 @@ for (i in 1:length(subjects[["subject_key"]])) {  ### loop over docs  i <- 14  j
 				}			
 			} 
 			if (aSiteKey == "vitals") {
-			  ### If v_rating, v_num_ratings, v_num_reviews contain characters other than
-			  ### numbers, strip the characters
-			  if(grepl("[^0-9.]",subjectSiteProfileData[1,"v_rating"])){
-			    subjectSiteProfileData[1,"v_rating"] <- gsub("[^0-9.]","",subjectSiteProfileData[1,"v_rating"])			    
-			  }
-			  
-			  if(grepl("[^0-9.]",subjectSiteProfileData[1,"v_num_ratings"])){
-			    subjectSiteProfileData[1,"v_num_ratings"] <- gsub("[^0-9.]","",subjectSiteProfileData[1,"v_num_ratings"])			    
-			  }
-			  
-			  if(grepl("[^0-9.]",subjectSiteProfileData[1,"v_num_reviews"])){
-			    subjectSiteProfileData[1,"v_num_reviews"] <- gsub("[^0-9.]","",subjectSiteProfileData[1,"v_num_reviews"])			    
-			  }			  
+				if (subjectSiteProfileData[1,"v_num_ratings"] > 0) {
+					tmpRatsRvws <- getVitalsRatingsReviews(subjectSiteProfileData[1,"v_num_ratings"], subjectSiteProfileData[1,"v_num_reviews"], aURL)
+					subjectSiteProfileData[1,"v_pos_ratings"] <- tmpRatsRvws$ratings[4] +  tmpRatsRvws$ratings[5] 
+					subjectSiteProfileData[1,"v_neut_ratings"] <- tmpRatsRvws$ratings[3] 
+					subjectSiteProfileData[1,"v_neg_ratings"] <- tmpRatsRvws$ratings[1] +  tmpRatsRvws$ratings[2]
+					
+					reviews <- tmpRatsRvws$reviews
+					
+					#debug("VITAL REVIEWS")
+					#debug(reviews)
+					
+					
+					#debug(reviews[reviews$text != "",])
 
-  			if (subjectSiteProfileData[1,"v_num_ratings"] > 0) {
-					tmpRatsRvws <- getVitalsRatingsReviews(subjectSiteProfileData[1,"v_num_ratings"], aURL)
-					#subjectSiteProfileData[1,"v_pos_ratings"] <- tmpRatsRvws$ratings[4] +  tmpRatsRvws$ratings[5] 
-					#subjectSiteProfileData[1,"v_neut_ratings"] <- tmpRatsRvws$ratings[3] 
-					#subjectSiteProfileData[1,"v_neg_ratings"] <- tmpRatsRvws$ratings[1] +  tmpRatsRvws$ratings[2]
-					
-					reviews <- tmpRatsRvws
-					
-					
-					#num5 <- nrow(reviewInfo[as.numeric(reviewInfo$rating) >= 4.5,])
-					#num4 <- nrow(reviewInfo[as.numeric(reviewInfo$rating) >= 3.5 & as.numeric(reviewInfo$rating) < 4.5,])
-					#num3 <- nrow(reviewInfo[as.numeric(reviewInfo$rating) >= 2.5 & as.numeric(reviewInfo$rating) < 3.5,])
-					#num2 <- nrow(reviewInfo[as.numeric(reviewInfo$rating) >= 1.5 & as.numeric(reviewInfo$rating) < 2.5,])
-					#num1 <- nrow(reviewInfo[as.numeric(reviewInfo$rating) < 1.5,])					
-
-					subjectSiteProfileData[1,"v_pos_ratings"] <- nrow(reviews[as.numeric(reviews$rating) >= 3.5,])
-					subjectSiteProfileData[1,"v_neut_ratings"] <- nrow(reviews[as.numeric(reviews$rating) >= 2.5 & as.numeric(reviews$rating) < 3.5,])
-					subjectSiteProfileData[1,"v_neg_ratings"] <- nrow(reviews[as.numeric(reviews$rating) < 2.5,])					
-					
-					
-					
 					numReviewRows <- nrow(reviews[reviews$text != "",])
 					if(numReviewRows > 0){
 						masterReviewData <- rbind(masterReviewData, 
@@ -486,9 +573,9 @@ for (i in 1:length(subjects[["subject_key"]])) {  ### loop over docs  i <- 14  j
 								text=reviews[reviews$text != "","text"]
 							)
 						)					
-						subjectSiteProfileData[1,"v_pos_reviews"] <- nrow(reviews[reviews$text != "" & as.numeric(reviews$rating) >= 3.5,])
-						subjectSiteProfileData[1,"v_neut_reviews"] <- nrow(reviews[reviews$text != "" & as.numeric(reviews$rating) >= 2.5 & as.numeric(reviews$rating) < 3.5,])
-						subjectSiteProfileData[1,"v_neg_reviews"] <- nrow(reviews[reviews$text != "" & as.numeric(reviews$rating) < 2.5,])
+						subjectSiteProfileData[1,"v_pos_reviews"] <- nrow(reviews[reviews$text != "" & as.numeric(reviews$rating) >= 4,])
+						subjectSiteProfileData[1,"v_neut_reviews"] <- nrow(reviews[reviews$text != "" & as.numeric(reviews$rating) == 3,])
+						subjectSiteProfileData[1,"v_neg_reviews"] <- nrow(reviews[reviews$text != "" & as.numeric(reviews$rating) < 3,])
 					}
 				} else { ### else, number of reviews was zero
 					subjectSiteProfileData[1,"v_pos_ratings"] <- subjectSiteProfileData[1,"v_neut_ratings"] <- subjectSiteProfileData[1,"v_neg_ratings"] <- 0
@@ -522,8 +609,8 @@ for (i in 1:length(subjects[["subject_key"]])) {  ### loop over docs  i <- 14  j
 					
 					
 					#  Figure out how to get the star rating based on score information:  looks like the comment score / 2
-					#debug("JSON OBJ")
-					#debug(jsonObj$Surveys$comments)
+					debug("JSON OBJ")
+					debug(jsonObj$Surveys$comments)
 					
 					if(is.null(jsonObj)){
 						profileReport <- rbind(profileReport, 
@@ -564,12 +651,12 @@ for (i in 1:length(subjects[["subject_key"]])) {  ### loop over docs  i <- 14  j
 					comments <- jsonObj$Surveys$comments
 					
 					
-					#debug("COMMENTS")
-					#debug(comments)
+					debug("COMMENTS")
+					debug(comments)
 					
 					ratings <- (comments$score)/2
-					#debug(ratings)
-					#debug(length(ratings))
+					debug(ratings)
+					debug(length(ratings))
 					
 					subjectSiteProfileData[1,"h_num_ratings"] <- length(ratings)
 					subjectSiteProfileData[1,"h_num_reviews"] <- length(ratings)	
@@ -584,15 +671,15 @@ for (i in 1:length(subjects[["subject_key"]])) {  ### loop over docs  i <- 14  j
 						overallSum <- overallSum + (a * length(subset(ratings,ratings == a)))
 					}
 					
-					#debug("Overall Sum")
-					#debug(overallSum)
+					debug("Overall Sum")
+					debug(overallSum)
 					
 					overallRating <- round(overallSum/length(ratings), digits=1)
 					subjectSiteProfileData[1,"h_rating"] <- overallRating
 
 					
-					#debug("Profile Data:")
-					#debug(subjectSiteProfileData)
+					debug("Profile Data:")
+					debug(subjectSiteProfileData)
 					
 					numReviewRows <- length(ratings)
 					if(numReviewRows > 0){
@@ -620,11 +707,6 @@ for (i in 1:length(subjects[["subject_key"]])) {  ### loop over docs  i <- 14  j
 					debug("Not a Group Directory")
 					
 					jsonObj <- hg_getProfileJSON(html_doc)
-					
-					#debug("JSON Object:")
-					#debug(jsonObj);
-					
-					#stop()
 					
 					if(is.null(jsonObj) | is.na(jsonObj) | jsonObj == ""){					
 						profileReport <- rbind(profileReport, 
@@ -871,8 +953,8 @@ for (i in 1:length(subjects[["subject_key"]])) {  ### loop over docs  i <- 14  j
 								
 								commentJSON <- fromJSON(phantom_output_file)
 								
-								#debug("JSON")
-								#debug(commentJSON)
+								debug("JSON")
+								debug(commentJSON)
 								
 								commentHtml <- commentJSON[[2]][[2]][1]
 								
@@ -919,8 +1001,8 @@ for (i in 1:length(subjects[["subject_key"]])) {  ### loop over docs  i <- 14  j
 									startItemNum <- startItemNum + 10
 								}
 							}
-							#debug("Google Data")
-							#debug(googleData)
+							debug("Google Data")
+							debug(googleData)
 		
 		
 							filename <- paste0("googleData_",profile_id,".csv")
@@ -1024,23 +1106,30 @@ for (i in 1:length(subjects[["subject_key"]])) {  ### loop over docs  i <- 14  j
 				#debug("Facebook JSON")
 				#debug(facebookJSON)
 				
-
+				
 				html <- read_html(facebookJSON$domops[[1]][[4]]$`__html`,verbose=FALSE)
+
 				
 				if(!grepl("No reviews to show",html)){
 						
 					
 					textComments <- html_text(html_nodes(html, xpath="//div/div/div[2]/div[1]/div[2]/div[2]"))
+
 					
 					ratings <- substr(html_text(html_nodes(html, xpath="//div/div/div[2]/div[1]/div[2]/div[1]/div/div/div[2]/div/div/div[2]/h5/span/span/i/u")),1,1)		
-				
-					dates <-as.character(as.Date(gsub("\\sat.*", "", html_attr(html_nodes(html,xpath="//div/div/div[2]/div[1]/div[2]/div[1]/div/div/div[2]/div/div/div[2]/div/span[3]/span//abbr"),"title")), format="%A, %B %d, %Y"))
 					
+		
+					
+					#dates <-html_attr(html_nodes(html,xpath="//div/div/div[2]/div[1]/div[2]/div[1]/div/div/div[2]/div/div/div[2]/div/span[3]/span/a/abbr"),"title")
+	
+					dates <-as.character(as.Date(html_attr(html_nodes(html,xpath="//div/div/div[2]/div[1]/div[2]/div[1]/div/div/div[2]/div/div/div[2]/div/span[3]/span/span/a/abbr"),"title"), format="%A, %B %d, %Y "))	
+
+						
 					f_df <- data.frame(date=dates, rating=ratings, comment=textComments, stringsAsFactors=FALSE)
 			
 			
-					#debug("DATA FRAME")
-					#debug(f_df)
+					debug("DATA FRAME")
+					debug(f_df)
 					
 					#debug("Number of positive ratings")
 					#debug(nrow(f_df[as.numeric(f_df$rating) >= 4,]));
@@ -1233,9 +1322,6 @@ write.csv(masterReviewData, file = reviewfilename, row.names=FALSE)
 debug("Number of rows in masterReviewData")
 debug(nrow(masterReviewData))
 
-debug("Dates:  ")
-debug(masterReviewData$date)
-
 if(nrow(masterReviewData) > 0){
 	unique_subjects <- unique(masterReviewData$subject)
 	for(i in 1:length(unique_subjects)){
@@ -1254,54 +1340,57 @@ for (i in 1:length(scrape_file_list)) {
 }
 
 
+
+###  write masterReviewData to the scrape_reviews table
+debug("MRD:")
+debug(masterReviewData)
+
+###  Add Subject to DB:
+tempDF <- data.frame(
+  "scrape_id" = replicate(nrow(masterReviewData), scrapeId),
+  "subject_key" = masterReviewData[,"subject"],
+  "site_key" = masterReviewData[,"site"],
+  "review_date" = masterReviewData[,"date"],
+  "rating" = masterReviewData[,"rating"],
+  "text" = masterReviewData[,"text"],
+  stringsAsFactors = FALSE
+)
+
+debug("dates:")
+debug(tempDF$review_date)
+stop()
+
+
+### Convert the dates for database
+tempDF$review_date <- format(as.Date(trimws(tempDF$review_date) , "%m/%d/%y"), "%Y-%m-%d")
+
+
+
+
+
+
+
+rs <- dbWriteTable(db, "scrape_reviews", tempDF, append=TRUE, row.names=FALSE)
+
+
+
+### Write Results to database:
+debug("Results:")
+debug(results)
+#########################
+# table: scrape_data
+# scrape_id
+# subject_key
+# column_id
+# value
+#########################
+
+debug(subjects)
+
+
+
 ##  Write the name of the outputFileList file
 cat(outputFile)
 
 
-
-#debug("Test:")
-#debug(masterReviewData)
-#debug(unique(masterReviewData$subject))
-#debug(length(unique(masterReviewData$subject)))
-
-
-### create data frame to collect reviews information for the subject
-#subjectReviewData <- matrix(data="", nrow=0, ncol = 5)
-#colnames(subjectReviewData) <- c("subject", "site", "date", "rating", "text")
-
-
-
-
-### General flow
-### Loop over docs
-###    Loop over sites
-###       Loop over data items
-###          - direct gets first
-###            if (element=="") skip as source is not yet defined 
-###            if (element=="exist") test for xpath node existence, assign to 
-###            if (element=="text") get text, assign to data_id
-###            if (element=="attribute") get node, get attribute value for given element_id
-###            
-###          - multipage gets second
-###            if (element=="children") get child xpath, count children elements,
-### 
-### Testing code here for debugging the loop above
-### //*[@id="sdaon"]/div[1]/div/div/div/div[1]/div/div/div/div[3]/span[3]
-### //*[@id="sdaon"]/div[1]/div/div/div/div[1]/div/div/div/div[3]/span[3]
-### 
-### nodes <- html_nodes(html_doc, xpath="//*[@id='sdaon']/div[1]/div/div/div/div[1]/div/div/div/div[3]/span[3]")
-### nodes <- html_nodes(html_doc, xpath="//span")
-### textContents[textContents[=="15"]]
-### 
-### html_structure(html_doc)
-### textContents <- html_text(nodes )
-### html_name(nodes )
-### html_attrs(nodes )
-### html_attr(nodes , "id")
-### 
-### LSA
-### Obtain the textmatrix and calculate the term-vector matrix. 
-### Columns represent the documents. The measure of the cosine of 
-###     the angle between 2 column-vectors is a measure of the similarity of the 2 documents.
-###     A high cosine value indicates high similarity.
 

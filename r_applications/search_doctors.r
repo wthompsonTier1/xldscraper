@@ -654,6 +654,13 @@
 	    install.packages("httr", repos='http://cran.us.r-project.org')
 		library("httr")
 	}			
+	
+	
+	if (! require(RMySQL, quietly = TRUE)){ 
+	  install.packages("RMySQL", repos='http://cran.us.r-project.org')
+	  library("RMySQL")
+	}
+	
 ####################################################
 ###		END:   REQUIRED PACKAGES
 ####################################################
@@ -670,10 +677,29 @@
 	###		
 	testing <- TRUE
 	
+	### Set up database connection
 	
+	###  Default values for production site:  (dev_setting file will overwrite these values if exists)
+	phantomjs_version <- "phantomjs-2.1.1-linux-x86_64"
+	db_name <- "xld-connectedmd"
+	db_user <- "root"
+	db_pwd <- "Nn1yhwz4dnq3"
+	db_host <- "127.0.0.1"
+	
+	# Load the dev settings file if needed
+	if(file.exists("../dev-environment.txt")){
+	  dev_settings <- readLines("../dev-environment.txt", warn=FALSE)
+	  for (i in 1:length(dev_settings)) {
+	    temp <- strsplit(dev_settings[i],"=")		
+	    assign(temp[[1]][1],temp[[1]][2])	
+	  }	
+	}
+	
+	
+	### Set up database connection
+	db <- dbConnect(MySQL(), user=db_user, password=db_pwd, dbname=db_name, host=db_host)
 
 
-	
 	
 	###
 	### 	Setup the "searchObj" object.  This is the structure that will be turned into json
@@ -716,11 +742,13 @@
 	
 	
 		###  Load in the Sites.csv
-	searchSiteInfo <- read.csv("Sites.csv", header = TRUE, sep = ",", stringsAsFactors = FALSE)
+###  Note:  no longer reading site information from a csv file.  Data is stored in the
+###  search_sites table
+#	searchSiteInfo <- read.csv("Sites.csv", header = TRUE, sep = ",", stringsAsFactors = FALSE)
+	searchSiteInfo <- dbReadTable(db, "search_sites")
 	searchObj$sites = searchSiteInfo
 	
 	sink("search_debug.txt", append=FALSE, split=TRUE)	
-	
 
 	###
 	### 	Open input file and get "location" and process delimited "doctor" string
