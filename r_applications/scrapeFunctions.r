@@ -66,7 +66,8 @@ google_formatDate <- function(x){
 		x <- as.Date(Sys.time()) - (365 * numYears)		
 	}		
 		
-	return(as.character(format(x, format="%m/%d/%y")))  
+	#return(as.character(format(x, format="%m/%d/%y"))) 
+	return(as.character(x))
 }
 
 

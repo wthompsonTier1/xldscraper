@@ -1034,7 +1034,7 @@ for (i in 1:length(subjects[["subject_key"]])) {  ### loop over docs  i <- 14  j
 					
 					ratings <- substr(html_text(html_nodes(html, xpath="//div/div/div[2]/div[1]/div[2]/div[1]/div/div/div[2]/div/div/div[2]/h5/span/span/i/u")),1,1)		
 				
-					dates <-format(as.Date(gsub("\\sat.*", "", html_attr(html_nodes(html,xpath="//div/div/div[2]/div[1]/div[2]/div[1]/div/div/div[2]/div/div/div[2]/div/span[3]/span//abbr"),"title")), format="%A, %B %d, %Y"), format="%m/%d/%y")
+					dates <-as.character(as.Date(gsub("\\sat.*", "", html_attr(html_nodes(html,xpath="//div/div/div[2]/div[1]/div[2]/div[1]/div/div/div[2]/div/div/div[2]/div/span[3]/span//abbr"),"title")), format="%A, %B %d, %Y"))
 					
 					f_df <- data.frame(date=dates, rating=ratings, comment=textComments, stringsAsFactors=FALSE)
 			
@@ -1232,6 +1232,9 @@ write.csv(masterReviewData, file = reviewfilename, row.names=FALSE)
 
 debug("Number of rows in masterReviewData")
 debug(nrow(masterReviewData))
+
+debug("Dates:  ")
+debug(masterReviewData$date)
 
 if(nrow(masterReviewData) > 0){
 	unique_subjects <- unique(masterReviewData$subject)
