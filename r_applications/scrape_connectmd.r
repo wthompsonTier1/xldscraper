@@ -1122,7 +1122,7 @@ for (i in 1:length(subjects[["subject_key"]])) {  ### loop over docs  i <- 14  j
 					
 					#dates <-html_attr(html_nodes(html,xpath="//div/div/div[2]/div[1]/div[2]/div[1]/div/div/div[2]/div/div/div[2]/div/span[3]/span/a/abbr"),"title")
 	
-					dates <-format(as.Date(html_attr(html_nodes(html,xpath="//div/div/div[2]/div[1]/div[2]/div[1]/div/div/div[2]/div/div/div[2]/div/span[3]/span/span/a/abbr"),"title"), format="%A, %B %d, %Y "), format="%m/%d/%y")	
+					dates <-as.character(as.Date(html_attr(html_nodes(html,xpath="//div/div/div[2]/div[1]/div[2]/div[1]/div/div/div[2]/div/div/div[2]/div/span[3]/span/span/a/abbr"),"title"), format="%A, %B %d, %Y "))	
 
 						
 					f_df <- data.frame(date=dates, rating=ratings, comment=textComments, stringsAsFactors=FALSE)
