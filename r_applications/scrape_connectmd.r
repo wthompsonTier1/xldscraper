@@ -110,6 +110,7 @@ db_name <- "xld-connectedmd"
 db_user <- "root"
 db_pwd <- "Nn1yhwz4dnq3"
 db_host <- "127.0.0.1"
+db_active <- FALSE
 
 ### Set working directory and load needed functions
 
@@ -168,6 +169,7 @@ if(file.exists("../../../dev-environment.txt")){
 
 ### Set up database connection
 db <- dbConnect(MySQL(), user=db_user, password=db_pwd, dbname=db_name, host=db_host)
+dbGetQuery(db, "truncate clients")
 dbGetQuery(db, "truncate scrapes")
 dbGetQuery(db, "truncate scrape_data")
 dbGetQuery(db, "truncate scrape_files")
@@ -1106,25 +1108,36 @@ for (i in 1:length(subjects[["subject_key"]])) {  ### loop over docs  i <- 14  j
 				#debug("Facebook JSON")
 				#debug(facebookJSON)
 				
-				
 				html <- read_html(facebookJSON$domops[[1]][[4]]$`__html`,verbose=FALSE)
-
+        #debug("FACEBOOK HTML:")
+        #debug(facebookJSON$domops[[1]][[4]]$`__html`)
+        #stop()
 				
 				if(!grepl("No reviews to show",html)){
 						
 					
 					textComments <- html_text(html_nodes(html, xpath="//div/div/div[2]/div[1]/div[2]/div[2]"))
+          #debug(textComments)
+          #debug(length(textComments))
+          
 
-					
 					ratings <- substr(html_text(html_nodes(html, xpath="//div/div/div[2]/div[1]/div[2]/div[1]/div/div/div[2]/div/div/div[2]/h5/span/span/i/u")),1,1)		
-					
+					#debug(ratings)
+					#debug(length(ratings))
 		
-					
+					#stop()
 					#dates <-html_attr(html_nodes(html,xpath="//div/div/div[2]/div[1]/div[2]/div[1]/div/div/div[2]/div/div/div[2]/div/span[3]/span/a/abbr"),"title")
 	
-					dates <-as.character(as.Date(html_attr(html_nodes(html,xpath="//div/div/div[2]/div[1]/div[2]/div[1]/div/div/div[2]/div/div/div[2]/div/span[3]/span/span/a/abbr"),"title"), format="%A, %B %d, %Y "))	
+					dates <-as.character(as.Date(html_attr(html_nodes(html,xpath="//div/div/div[2]/div[1]/div[2]/div[1]/div/div/div[2]/div/div/div[2]/div/span[3]/span//abbr"),"title"), format="%A, %B %d, %Y "))	
 
-						
+					#debug("lengths:")
+					#debug(length(dates))
+					#debug(length(ratings))
+					#debug(length(textComments))
+					
+					#stop()
+					
+					
 					f_df <- data.frame(date=dates, rating=ratings, comment=textComments, stringsAsFactors=FALSE)
 			
 			
@@ -1342,8 +1355,9 @@ for (i in 1:length(scrape_file_list)) {
 
 
 ###  write masterReviewData to the scrape_reviews table
-debug("MRD:")
-debug(masterReviewData)
+
+
+
 
 ###  Add Subject to DB:
 tempDF <- data.frame(
@@ -1356,13 +1370,18 @@ tempDF <- data.frame(
   stringsAsFactors = FALSE
 )
 
-debug("dates:")
-debug(tempDF$review_date)
-stop()
+debug(tempDF)
+
+
+
+#as.Date(, format="%A, %B %d, %Y "))	
+
+#debug("dates:")
+#debug(tempDF$review_date)
 
 
 ### Convert the dates for database
-tempDF$review_date <- format(as.Date(trimws(tempDF$review_date) , "%m/%d/%y"), "%Y-%m-%d")
+#tempDF$review_date <- format(as.Date(trimws(tempDF$review_date) , "%m/%d/%y"), "%Y-%m-%d")
 
 
 
