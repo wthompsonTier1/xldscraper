@@ -28,19 +28,21 @@ scrape_file_list <- list()
 ### 	filename, title, description
 addToFileList <- function(filename, title, description, type){
 	# add file to scrape_files table
-  sql <- paste0(
+  if(db_active){
+   sql <- paste0(
     "insert into scrape_files (scrape_id, filename, title, description, type) values (", scrapeId,
     ", '", filename,
     "', '", title, 
     "', '", description, 
     "', '", type,
     "')"
-  )
-  debug("File SQL:  ")
-  debug(sql)
+    )
+    debug("File SQL:  ")
+    debug(sql)
   
-  rs <- dbSendQuery(db, sql)
-  dbClearResult(rs)
+    rs <- dbSendQuery(db, sql)
+    dbClearResult(rs)
+  }
   curList <- scrape_file_list
 	curList[[length(curList)+1]] <- c(filename, title, description, type)
 	scrape_file_list <<- curList
@@ -110,6 +112,7 @@ db_name <- "xld-connectedmd"
 db_user <- "root"
 db_pwd <- "Nn1yhwz4dnq3"
 db_host <- "127.0.0.1"
+db_active <- FALSE
 
 ### Set working directory and load needed functions
 
@@ -168,15 +171,15 @@ if(file.exists("../../../dev-environment.txt")){
 
 ### Set up database connection
 db <- dbConnect(MySQL(), user=db_user, password=db_pwd, dbname=db_name, host=db_host)
-dbGetQuery(db, "truncate clients")
-dbGetQuery(db, "truncate scrapes")
-dbGetQuery(db, "truncate scrape_data")
-dbGetQuery(db, "truncate scrape_files")
-dbGetQuery(db, "truncate scrape_subjects")
-dbGetQuery(db, "truncate scrape_subject_site_identifiers")
-dbGetQuery(db, "truncate scrape_reviews")
-
-
+if(db_active){
+  dbGetQuery(db, "truncate clients")
+  dbGetQuery(db, "truncate scrapes")
+  dbGetQuery(db, "truncate scrape_data")
+  dbGetQuery(db, "truncate scrape_files")
+  dbGetQuery(db, "truncate scrape_subjects")
+  dbGetQuery(db, "truncate scrape_subject_site_identifiers")
+  dbGetQuery(db, "truncate scrape_reviews")
+}
 ### Read subject, site, xpath expression, and other needed data
 
 ###  Get the report column information from the database
@@ -216,26 +219,28 @@ debug(paste0("PhantomJS Path: ", phantomjs_path))
 #########################################
 
 ### Insert client if needed
-clients <- dbGetQuery(db, paste0("select * from clients where name='",clientName,"'"))
-if(nrow(clients) == 0){
-  rs <- dbSendQuery(db, paste0("insert into clients (name) values ('", clientName, "')"))
-  dbClearResult(rs)
-  clientId <- dbGetQuery(db,"select last_insert_id()")
-}else{
-  clientId <- clients[1,"id"]
+if(db_active){
+  clients <- dbGetQuery(db, paste0("select * from clients where name='",clientName,"'"))
+  if(nrow(clients) == 0){
+    rs <- dbSendQuery(db, paste0("insert into clients (name) values ('", clientName, "')"))
+    dbClearResult(rs)
+    clientId <- dbGetQuery(db,"select last_insert_id()")
+  }else{
+    clientId <- clients[1,"id"]
+  }
+  debug(paste0("Client DB Id:", clientId))
 }
-debug(paste0("Client DB Id:", clientId))
-
 ### Add row to scrapes
-sql <- paste0("insert into scrapes (client_id, output_dir, scrape_ts_string) values (", clientId, ",'", searchDir, "','", scrape_timestamp,"')")
-debug("SQL:")
-debug(sql)
-rs <- dbSendQuery(db, sql)
-dbClearResult(rs)
-scrapeId <- as.integer(dbGetQuery(db, "select last_insert_id()"))
-
-debug(paste0("DB Scrape ID: ", scrapeId))
-
+if(db_active){
+  sql <- paste0("insert into scrapes (client_id, output_dir, scrape_ts_string) values (", clientId, ",'", searchDir, "','", scrape_timestamp,"')")
+  debug("SQL:")
+  debug(sql)
+  rs <- dbSendQuery(db, sql)
+  dbClearResult(rs)
+  scrapeId <- as.integer(dbGetQuery(db, "select last_insert_id()"))
+  
+  debug(paste0("DB Scrape ID: ", scrapeId))
+}
 
 ###  Add Scrape debug to file list
 addToFileList(scrapeDebugFilename, "Scrape Debug Output", "Text file containing the entire debug output from the scrape routine.  Helps with tracking down errors.", "debug")
@@ -259,17 +264,15 @@ subjects["subject_key"] <- lapply(subjects["subject_key"],fix_subject_keys)
 addToFileList("Subjects.csv", "Subjects.csv", "CSV file containing the subject data used in the scrape.", "source")
 
 ###  Add Subject to DB:
-tempDF <- data.frame(
-  "subject_key" = subjects[,"subject_key"], 
-  "subject_name" = subjects[,"subject_name"],
-  "scrape_id" = replicate(nrow(subjects), scrapeId),
-   stringsAsFactors = FALSE
-)
-rs <- dbWriteTable(db, "scrape_subjects", tempDF, append=TRUE, row.names=FALSE)
-
-
-
-
+if(db_active){
+  tempDF <- data.frame(
+    "subject_key" = subjects[,"subject_key"], 
+    "subject_name" = subjects[,"subject_name"],
+    "scrape_id" = replicate(nrow(subjects), scrapeId),
+     stringsAsFactors = FALSE
+  )
+  rs <- dbWriteTable(db, "scrape_subjects", tempDF, append=TRUE, row.names=FALSE)
+}
 
 ###Load in subject_site_identifier.csv file; fix column names; lowercase subject_key and site key values
 subj_site_id <- read.csv("Subject_Site_Identifiers.csv", header = TRUE, sep = ",", stringsAsFactors = FALSE, colClasses="character")  ### subject ids and url differentiators
@@ -281,16 +284,17 @@ subj_site_id["site_key"] <- lapply(subj_site_id["site_key"],function(x){tolower(
 addToFileList("Subject_Site_Identifiers.csv", "Subject_Site_Identifier.csv", "CSV file containing all profiles included in the scrape.", "source")
 
 ###  Write subj_site_id to database
-tempDF <- data.frame(
-  "subject_key" = subj_site_id[,"subject_key"], 
-  "site_key" = subj_site_id[,"site_key"],
-  "site_subject_ident" = subj_site_id[,"site_subject_ident"],
-  "scrape_id" = replicate(nrow(subj_site_id), scrapeId),
-  stringsAsFactors = FALSE
-)
-
-rs <- dbWriteTable(db, "scrape_subject_site_identifiers", tempDF, append=TRUE, row.names=FALSE)
-
+if(db_active){
+  tempDF <- data.frame(
+    "subject_key" = subj_site_id[,"subject_key"], 
+    "site_key" = subj_site_id[,"site_key"],
+    "site_subject_ident" = subj_site_id[,"site_subject_ident"],
+    "scrape_id" = replicate(nrow(subj_site_id), scrapeId),
+    stringsAsFactors = FALSE
+  )
+  
+  rs <- dbWriteTable(db, "scrape_subject_site_identifiers", tempDF, append=TRUE, row.names=FALSE)
+}
 
 debug("<--------  BEGIN:  CSV DATA -------------->")
 debug("SITES: ")
@@ -1358,52 +1362,21 @@ for (i in 1:length(scrape_file_list)) {
 
 
 
-###  Add Subject to DB:
-tempDF <- data.frame(
-  "scrape_id" = replicate(nrow(masterReviewData), scrapeId),
-  "subject_key" = masterReviewData[,"subject"],
-  "site_key" = masterReviewData[,"site"],
-  "review_date" = masterReviewData[,"date"],
-  "rating" = masterReviewData[,"rating"],
-  "text" = masterReviewData[,"text"],
-  stringsAsFactors = FALSE
-)
+###  Write scrape reviews to DB:
+if(db_active){
+  tempDF <- data.frame(
+    "scrape_id" = replicate(nrow(masterReviewData), scrapeId),
+    "subject_key" = masterReviewData[,"subject"],
+    "site_key" = masterReviewData[,"site"],
+    "review_date" = masterReviewData[,"date"],
+    "rating" = masterReviewData[,"rating"],
+    "text" = masterReviewData[,"text"],
+    stringsAsFactors = FALSE
+  )
+  debug(tempDF)
+  rs <- dbWriteTable(db, "scrape_reviews", tempDF, append=TRUE, row.names=FALSE)
+}
 
-debug(tempDF)
-
-
-
-#as.Date(, format="%A, %B %d, %Y "))	
-
-#debug("dates:")
-#debug(tempDF$review_date)
-
-
-### Convert the dates for database
-#tempDF$review_date <- format(as.Date(trimws(tempDF$review_date) , "%m/%d/%y"), "%Y-%m-%d")
-
-
-
-
-
-
-
-rs <- dbWriteTable(db, "scrape_reviews", tempDF, append=TRUE, row.names=FALSE)
-
-
-
-### Write Results to database:
-debug("Results:")
-debug(results)
-#########################
-# table: scrape_data
-# scrape_id
-# subject_key
-# column_id
-# value
-#########################
-
-debug(subjects)
 
 
 
