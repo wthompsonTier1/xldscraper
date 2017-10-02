@@ -553,35 +553,42 @@ for (i in 1:length(subjects[["subject_key"]])) {  ### loop over docs  i <- 14  j
 				}			
 			} 
 			if (aSiteKey == "vitals") {
+			  if(grepl("[^0-9.]",subjectSiteProfileData[1,"v_rating"])){
+			    subjectSiteProfileData[1,"v_rating"] <- gsub("[^0-9.]","",subjectSiteProfileData[1,"v_rating"])			    
+			  }
+			  
+			  if(grepl("[^0-9.]",subjectSiteProfileData[1,"v_num_ratings"])){
+			    subjectSiteProfileData[1,"v_num_ratings"] <- gsub("[^0-9.]","",subjectSiteProfileData[1,"v_num_ratings"])			    
+			  }
+			  
+			  if(grepl("[^0-9.]",subjectSiteProfileData[1,"v_num_reviews"])){
+			    subjectSiteProfileData[1,"v_num_reviews"] <- gsub("[^0-9.]","",subjectSiteProfileData[1,"v_num_reviews"])			    
+			  }		  
+			  
 				if (subjectSiteProfileData[1,"v_num_ratings"] > 0) {
-					tmpRatsRvws <- getVitalsRatingsReviews(subjectSiteProfileData[1,"v_num_ratings"], subjectSiteProfileData[1,"v_num_reviews"], aURL)
-					subjectSiteProfileData[1,"v_pos_ratings"] <- tmpRatsRvws$ratings[4] +  tmpRatsRvws$ratings[5] 
-					subjectSiteProfileData[1,"v_neut_ratings"] <- tmpRatsRvws$ratings[3] 
-					subjectSiteProfileData[1,"v_neg_ratings"] <- tmpRatsRvws$ratings[1] +  tmpRatsRvws$ratings[2]
+					tmpRatsRvws <- getVitalsRatingsReviews(subjectSiteProfileData[1,"v_num_ratings"], aURL)
+					reviews <- tmpRatsRvws
 					
-					reviews <- tmpRatsRvws$reviews
+					subjectSiteProfileData[1,"v_pos_ratings"] <- nrow(reviews[as.numeric(reviews$rating) >= 3.5,])
+					subjectSiteProfileData[1,"v_neut_ratings"] <- nrow(reviews[as.numeric(reviews$rating) >= 2.5 & as.numeric(reviews$rating) < 3.5,])
+					subjectSiteProfileData[1,"v_neg_ratings"] <- nrow(reviews[as.numeric(reviews$rating) < 2.5,])					
 					
-					#debug("VITAL REVIEWS")
-					#debug(reviews)
-					
-					
-					#debug(reviews[reviews$text != "",])
-
 					numReviewRows <- nrow(reviews[reviews$text != "",])
 					if(numReviewRows > 0){
-						masterReviewData <- rbind(masterReviewData, 
-							data.frame(
-								subject=replicate(numReviewRows, aSubjKey), 
-								site=replicate(numReviewRows, aSiteKey), 
-								date=reviews[reviews$text != "","date"], 
-								rating=reviews[reviews$text != "","rating"], 
-								text=reviews[reviews$text != "","text"]
-							)
-						)					
-						subjectSiteProfileData[1,"v_pos_reviews"] <- nrow(reviews[reviews$text != "" & as.numeric(reviews$rating) >= 4,])
-						subjectSiteProfileData[1,"v_neut_reviews"] <- nrow(reviews[reviews$text != "" & as.numeric(reviews$rating) == 3,])
-						subjectSiteProfileData[1,"v_neg_reviews"] <- nrow(reviews[reviews$text != "" & as.numeric(reviews$rating) < 3,])
+					  masterReviewData <- rbind(masterReviewData, 
+              data.frame(
+                subject=replicate(numReviewRows, aSubjKey), 
+                site=replicate(numReviewRows, aSiteKey), 
+                date=reviews[reviews$text != "","date"], 
+                rating=reviews[reviews$text != "","rating"], 
+                text=reviews[reviews$text != "","text"]
+              )
+					  )					  
+					  subjectSiteProfileData[1,"v_pos_reviews"] <- nrow(reviews[reviews$text != "" & as.numeric(reviews$rating) >= 3.5,])
+					  subjectSiteProfileData[1,"v_neut_reviews"] <- nrow(reviews[reviews$text != "" & as.numeric(reviews$rating) >= 2.5 & as.numeric(reviews$rating) < 3.5,])
+					  subjectSiteProfileData[1,"v_neg_reviews"] <- nrow(reviews[reviews$text != "" & as.numeric(reviews$rating) < 2.5,])					
 					}
+
 				} else { ### else, number of reviews was zero
 					subjectSiteProfileData[1,"v_pos_ratings"] <- subjectSiteProfileData[1,"v_neut_ratings"] <- subjectSiteProfileData[1,"v_neg_ratings"] <- 0
 					subjectSiteProfileData[1,"v_pos_reviews"] <- subjectSiteProfileData[1,"v_neut_reviews"] <- subjectSiteProfileData[1,"v_neg_reviews"] <- 0

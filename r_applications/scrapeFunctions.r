@@ -375,59 +375,65 @@ getVitalsReviewPage <- function(url)  {
    #revParent <- html_nodes(html_doc, xpath=revNodeXP )
    #revDivNodes <- html_children(revParent)
    
-   revNodeXP <- "//div[contains(@class,'individualReviews')]"
+   revNodeXP <- "//div[contains(@class,'card review')]"
    revNodes <- html_nodes(html_doc, xpath=revNodeXP)
    ##debug("Number of reviews on this page:")
    ##debug(length(revNodes))
    
    ## Get the review date  //*[@id="reviewPage"]/div[4]/div[2]/div[1]/div[1]/div[2]/div
-   reviewDate <- as.character(as.Date(gsub("st,|nd,|rd,|th,", ",", getTextContent(revNodes, 'div[1]/div[2]/div')), "%B %d, %Y"))
+   reviewDate <- as.character(as.Date(gsub("st,|nd,|rd,|th,", ",", getTextContent(revNodes, 'div[1]//h3')), "%B %d, %Y"))
    
    ## Get the review rating  //*[@id="reviewPage"]/div[4]/div[2]/div[1]/div[1]/div[1]/span[2]
-   reviewRating <- gsub(" of .*", "", getTextContent(revNodes, 'div[1]/div[1]/span[2]'))
+   #reviewRating <- gsub(" of .*", "", getTextContent(revNodes, 'div[1]/h2/'))
+   reviewRating <-  gsub("[^0-9.]", "", getTextContent(revNodes, 'div[1]/h2'))
+
    ##reviewRating <- gsub(pattern = "\n", replacement = "", reviewRating, fixed = TRUE )
    reviewRating <- str_trim(reviewRating)   
    
    ## Get the review text
-   reviewText <- getTextContent(revNodes, 'div[3]/div/div') 
-   reviewText <- gsub(pattern = "\n", replacement = "", reviewText, fixed = TRUE )
-   reviewText <- str_trim(reviewText)
-   
-
+   reviewText <- c();
+   for(i in 1:length(revNodes)){
+     val <- ""
+     loopNode <- revNodes[i]
+     if(getExistance(loopNode, "div[3]//p")){
+        val <- getTextContent(loopNode, "div[3]//p")       
+     }
+     reviewText[length(reviewText)+1] <- val
+   }
    return(data.frame(date=reviewDate, rating=reviewRating, text=reviewText, stringsAsFactors=FALSE))
 }
 ### getVitalsReviewPage("http://www.vitals.com/doctors/Dr_Franklin_Richards/reviews?page=1")
 
 
-getVitalsRatingsReviews <- function(numRatings, numReviews, url) { 
-   numRatings <- as.numeric(numRatings)
-   numReviews <- as.numeric(numReviews)
+getVitalsRatingsReviews <- function(numRatings, url) { 
+   #numRatings <- as.numeric(numRatings)
+   #numReviews <- as.numeric(numReviews)
    
-   if (is.na(numReviews) | is.null(numReviews)) numReviews <- 0
+   #if (is.na(numReviews) | is.null(numReviews)) numReviews <- 0
    aURL <- gsub(pattern = ".html", replacement = "/reviews", url, fixed = TRUE )
    
    
-   xp5 <- '//*[@id="reviewPage"]/div[2]/div/div/div[1]/div/ul/li[1]/div[2]/div[2]/span'
-   xp4 <- '//*[@id="reviewPage"]/div[2]/div/div/div[1]/div/ul/li[2]/div[2]/div[2]/span'
-   xp3 <- '//*[@id="reviewPage"]/div[2]/div/div/div[1]/div/ul/li[3]/div[2]/div[2]/span'
-   xp2 <- '//*[@id="reviewPage"]/div[2]/div/div/div[1]/div/ul/li[4]/div[2]/div[2]/span'
-   xp1 <- '//*[@id="reviewPage"]/div[2]/div/div/div[1]/div/ul/li[5]/div[2]/div[2]/span'
-   html_doc <- read_html(aURL, verbose=FALSE)
+   #xp5 <- '//*[@id="reviewPage"]/div[2]/div/div/div[1]/div/ul/li[1]/div[2]/div[2]/span'
+   #xp4 <- '//*[@id="reviewPage"]/div[2]/div/div/div[1]/div/ul/li[2]/div[2]/div[2]/span'
+   #xp3 <- '//*[@id="reviewPage"]/div[2]/div/div/div[1]/div/ul/li[3]/div[2]/div[2]/span'
+   #xp2 <- '//*[@id="reviewPage"]/div[2]/div/div/div[1]/div/ul/li[4]/div[2]/div[2]/span'
+   #xp1 <- '//*[@id="reviewPage"]/div[2]/div/div/div[1]/div/ul/li[5]/div[2]/div[2]/span'
+   #html_doc <- read_html(aURL, verbose=FALSE)
    
-   tmpRating <- c("0","0","0","0","0")
-   tmpRating[5] <- getTextContent(html_doc, xp5) 
-   tmpRating[4] <- getTextContent(html_doc, xp4)
-   tmpRating[3] <- getTextContent(html_doc, xp3)
-   tmpRating[2] <- getTextContent(html_doc, xp2)
-   tmpRating[1] <- getTextContent(html_doc, xp1)
-   tmpRating <- as.numeric(gsub(pattern = "%", replacement = "", tmpRating, fixed = TRUE ))
+   #tmpRating <- c("0","0","0","0","0")
+   #tmpRating[5] <- getTextContent(html_doc, xp5) 
+   #tmpRating[4] <- getTextContent(html_doc, xp4)
+   #tmpRating[3] <- getTextContent(html_doc, xp3)
+   #tmpRating[2] <- getTextContent(html_doc, xp2)
+   #tmpRating[1] <- getTextContent(html_doc, xp1)
+   #tmpRating <- as.numeric(gsub(pattern = "%", replacement = "", tmpRating, fixed = TRUE ))
       
-   resultRatings <- round((numRatings * tmpRating / 100), digits = 0)
+   #resultRatings <- round((numRatings * tmpRating / 100), digits = 0)
    
    reviewInfo <- data.frame(date=c(), rating=c(), text=c(), stringsAsFactors=FALSE)
    ##resultReviews <- vector("character")
-   if (numReviews > 0) {
-      numPages <- ceiling(numReviews / 10)
+   if (numRatings > 0) {
+      numPages <- ceiling(as.numeric(numRatings)/ 12)
       for (i in 1:numPages) {
          pageURL <- paste0(aURL, "?page=", (i-1))
          pageReviews <- getVitalsReviewPage(pageURL) 
@@ -435,14 +441,8 @@ getVitalsRatingsReviews <- function(numRatings, numReviews, url) {
          ##resultReviews <- c(resultReviews, pageReviews )
       }
    }
-   debug("REVIEWS:")
-   debug(reviewInfo)
-   
-   
-   
-   
-   result <- list(ratings=resultRatings, reviews=reviewInfo) 
-   return( result )
+
+   return( reviewInfo )
 }
 
 

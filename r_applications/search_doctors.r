@@ -685,6 +685,7 @@
 	db_user <- "root"
 	db_pwd <- "Nn1yhwz4dnq3"
 	db_host <- "127.0.0.1"
+	db_active <- FALSE
 	
 	# Load the dev settings file if needed
 	if(file.exists("../dev-environment.txt")){
