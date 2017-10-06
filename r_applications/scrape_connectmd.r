@@ -112,7 +112,7 @@ db_name <- "xld-connectedmd"
 db_user <- "root"
 db_pwd <- "Nn1yhwz4dnq3"
 db_host <- "127.0.0.1"
-db_active <- FALSE
+db_active <- TRUE
 
 ### Set working directory and load needed functions
 
@@ -1364,7 +1364,40 @@ for (i in 1:length(scrape_file_list)) {
 
 
 
-###  write masterReviewData to the scrape_reviews table
+###  write results to the scrape_data table
+if(db_active){
+  db_results <- data.frame(
+    "scrape_id" = c(),
+    "subject_key" = c(),
+    "column_id" = c(),
+    "value" = c(),
+    stringsAsFactors = FALSE
+  )
+
+#  db_results <- matrix(data="", nrow=0, ncol = 4)
+#  colnames(db_results) <- c("scrape_id", "subject_key", "column_id", "value")
+  debug("Cols Length:")
+  debug(length(report_colnames))
+  for (i in 1:length(report_colnames)){
+    col <- report_colnames[i]
+    tempDF <-data.frame(
+      "scrape_id" = replicate(nrow(results), scrapeId),
+      "subject_key" = subjects[,"subject_key"],
+      "column_id" = replicate(nrow(results), col),
+      "value" = results[,col],
+      stringsAsFactors = FALSE
+    )
+    db_results <- rbind(db_results, tempDF)
+  }   
+  #debug("formatted Results END:")
+  #debug(db_results)
+
+  rs <- dbWriteTable(db, "scrape_data", db_results, append=TRUE, row.names=FALSE)
+  
+#  "column_id" = masterReviewData[,"site"],
+#  "value" = masterReviewData[,"date"],  
+}
+
 
 
 
@@ -1380,7 +1413,6 @@ if(db_active){
     "text" = masterReviewData[,"text"],
     stringsAsFactors = FALSE
   )
-  debug(tempDF)
   rs <- dbWriteTable(db, "scrape_reviews", tempDF, append=TRUE, row.names=FALSE)
 }
 
