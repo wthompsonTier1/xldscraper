@@ -172,13 +172,13 @@ if(file.exists("../../../dev-environment.txt")){
 ### Set up database connection
 db <- dbConnect(MySQL(), user=db_user, password=db_pwd, dbname=db_name, host=db_host)
 if(db_active){
-  dbGetQuery(db, "truncate clients")
-  dbGetQuery(db, "truncate scrapes")
-  dbGetQuery(db, "truncate scrape_data")
-  dbGetQuery(db, "truncate scrape_files")
-  dbGetQuery(db, "truncate scrape_subjects")
-  dbGetQuery(db, "truncate scrape_subject_site_identifiers")
-  dbGetQuery(db, "truncate scrape_reviews")
+  #dbGetQuery(db, "truncate clients")
+  #dbGetQuery(db, "truncate scrapes")
+  #dbGetQuery(db, "truncate scrape_data")
+  #dbGetQuery(db, "truncate scrape_files")
+  #dbGetQuery(db, "truncate scrape_subjects")
+  #dbGetQuery(db, "truncate scrape_subject_site_identifiers")
+  #dbGetQuery(db, "truncate scrape_reviews")
 }
 ### Read subject, site, xpath expression, and other needed data
 

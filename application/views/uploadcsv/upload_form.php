@@ -21,6 +21,12 @@
 			
 			<div id="spinner"></div>
 			<?php echo form_open_multipart('uploadcsv/do_upload');?>
+	       
+	       <!-- Choose client name -->
+	       <div class="col-xs-12">
+	            <h4>Choose a Client:</h4>
+				<input type="input" id="clientname" name="clientname" class="form-control" placeholder="Choose a Client" />
+	        </div>			
 			
 	       <div class="col-xs-12">
 	            <h4>Subject CSV:</h4>
@@ -60,6 +66,13 @@
 	</section>
 	<script type="text/javascript">		
 		$(function(){
+			
+			//Autocomplete for client names
+		    $( "#clientname" ).autocomplete({
+		      source: "/Autocomplete/GetClientName"
+		    });			
+			
+			
 		  // We can attach the `fileselect` event to all file inputs on the page
 		  $(document).on('change', ':file', function() {
 		    var input = $(this),

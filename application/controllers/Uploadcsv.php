@@ -79,10 +79,18 @@
 			                working directory 
 			            
 			            */
-						$this->Searchsites_model->createCSV($working_dir);			            
+						$this->Searchsites_model->createCSV($working_dir);
+						
+						
+						//Client name:
+						$clientName = $this->input->post("clientname");			            
 
-		                /*   Kick off data scrape application  */				  	
-						$scrapeFileReturn = exec("Rscript r_applications/scrape_connectmd.r ".$search_dir, $output);
+		                /*   Kick off data scrape application  */	
+		                $rExecString = "Rscript r_applications/scrape_connectmd.r ".$search_dir;
+		                if($clientName != ""){
+			                $rExecString .= " '". $clientName."'";
+		                }	  	
+						$scrapeFileReturn = exec($rExecString, $output);
 						$this->data['results'] = json_encode($this->ScrapeResults_model->get_results($working_dir, $scrapeFileReturn));
 						$this->load->view("templates/header",$this->data);
 			            $this->load->view("templates/navigation",$this->data);
