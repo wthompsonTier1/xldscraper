@@ -74,7 +74,7 @@
 		    		echo(json_encode($scrape_dirs));
 		    		break;
 		      case 'search_doctors':
-		      		$searchDir = "search_".date("Ymd-His");
+		      		$searchDir = "xld_scrape_".date("Ymd-His");
 			  		$inputFile = "r_working_dir/".$searchDir."/search.txt";
 		      		if(!file_exists(dirname($inputFile)))
 			  			mkdir(dirname($inputFile), 0777, true);		      		

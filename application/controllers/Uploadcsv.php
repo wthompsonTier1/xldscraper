@@ -40,7 +40,7 @@
         public function do_upload()
         {
 	        	/* create working directory */
-	        	$search_dir = "search_".date("Ymd-Gis");
+	        	$search_dir = "xld_scrape_".date("Ymd-Gis");
 	        	$working_dir = "./r_working_dir/".$search_dir;
 	        	if(mkdir($working_dir)){
 	                $config['upload_path']          = $working_dir;
