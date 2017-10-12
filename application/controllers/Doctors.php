@@ -118,6 +118,8 @@
 		      		$obj->profiles = $data['profiles'];
 		      		$obj->searchDir = $data['searchDir'];
 		      		
+		      		$clientName = $data['clientname'];
+		      		
 		      		$working_dir = "r_working_dir/".$obj->searchDir;
 		      		
 		      		//Write profile information to file for future use
@@ -177,7 +179,10 @@
 					fclose($ssi_fp);
 				
 				  	/*   Kick off data scrape application  */				  	
-				  	$scrapeFileReturn = exec("Rscript r_applications/scrape_connectmd.r ".$obj->searchDir, $output);
+				  	$rExecStr = "Rscript r_applications/scrape_connectmd.r ".$obj->searchDir;
+				  	if($clientName != "")
+				  		$rExecStr .= " '$clientName'";
+				  	$scrapeFileReturn = exec($rExecStr, $output);
 				  	
 				  	
 

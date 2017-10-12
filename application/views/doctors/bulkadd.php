@@ -86,8 +86,9 @@
 			
 			/*  Previous Scrapes Feature:  in progress */
 			//_getPreviousScrapes();
-		
-			
+			//Autocomplete for client names
+		    
+
 			$("#btn-find-doctors").click(function(){
 				_clearFormErrors();
 				if(_validateForm()){
@@ -389,12 +390,24 @@
 
 					var output = "";
 					output += "<div class='text-center'>"+getCSVButton()+"</div>";
-					output += "<div class='container'><div class='row'>";
+					output += "<div class='container'>";
+					output += "<div class='row'>";
 					output += "<div class='col col-sm-3'><p>Total Profiles: <span class='total-profiles-found'></span></p></div>";
 					output += "<div class='col col-sm-6'></div>";
 					output += "<div class='col col-sm-3'><p>Total Profiles to CSV: <span class='total-to-csv'></span></p></div>";
-					output += "</div></div>";
+					output += "</div>";
 					
+					
+					/*  Add in client name field with autocomplete */
+					output += "<div class='col-xs-12'>";
+					output += "<h4>Choose a Client:</h4>";
+					output += "<input type='input' id='clientname' name='clientname' class='form-control' placeholder='Choose a Client' />";
+					output += "</div>";					
+					
+					output += "</div>";
+					
+
+										
 					
 					
 					if(data['results'].length > 0){
@@ -406,6 +419,13 @@
 					output += "<div class='text-center'>"+getCSVButton()+"</div>";
 
 					$("#results-content").html(output);
+					
+					/*  client name autocomplete  */
+					$( "#clientname" ).autocomplete({
+						source: "/Autocomplete/GetClientName"
+					});	
+					
+					
 					/*  Google Profile Links */
 					
 					$(".google-profile-link").click(function(){
@@ -437,7 +457,8 @@
 					});
 					
 					$(".create-csv").click(function(){
-						console.log("Create CSV files");
+						
+						var clientName = $("#clientname").val();
 						var profile_data = [];
 						
 						$(".doctor-container").each(function(index, docObj){
@@ -533,7 +554,7 @@
 						
 						
 						showSpinner();	
-						console.log("About to scrape xxx...");
+						
 						$.ajax({
 							type: "POST",
 							url: "<?php base_url();?>ajax",
@@ -542,7 +563,8 @@
 								mode:'create-csv-files',
 								sites: _sites,
 								profiles: profile_data,
-								searchDir: _searchDir
+								searchDir: _searchDir,
+								clientname: clientName
 							},
 							success: function(obj) {
 								console.log(obj);
@@ -578,10 +600,7 @@
 								
 																
 								$("#results-content").html(output);
-								
-								
-		
-								
+														
 							}
 						});	
 					});
