@@ -596,26 +596,37 @@ for (i in 1:length(subjects[["subject_key"]])) {  ### loop over docs  i <- 14  j
 			}
 			if (aSiteKey == "healthgrades") {
 				if(grepl("group-directory", partialURL)){
+					debug("GROUP DIRECTORY TYPE PAGE")
 					scriptNodes <- html_nodes(html_doc, xpath="//*/script")
+					debug("Number of script nodes on Group Directory Page:")
+					debug(length(scriptNodes))
+
 					dataNode <- ""
 					for (i in 1:length(scriptNodes)){ 
-						if(grepl("HGEppUi.Model",scriptNodes[i])){
+						if(grepl("viewModel =",scriptNodes[i])){
 							dataNode <- scriptNodes[i]
 							break
 						}
 					}
 
 					nodeText <- html_text(dataNode)
+					
+
+
+					
 					match <- regexpr("return \\{",nodeText)
 					nodeText <- substr(nodeText,match + attr(match, "match.length")-1,nchar(nodeText))
 					
-					
+
 					#  NEXT: find the end of the javascript obj string and turn into json
-					match <- regexpr(',\\"ScheduledProviders',nodeText)
+					# match <- regexpr(',\\"ScheduledProviders',nodeText)
+					match <- regexpr('}; ',nodeText)
 					
-					nodeText <- paste0(substr(nodeText,1,match-1),"}")
+					nodeText <- substr(nodeText,1,match-1)
 					
-					
+					debug("Script Node Text:")
+					debug(nodeText)	
+
 					jsonObj <- fromJSON(nodeText)
 					
 					
