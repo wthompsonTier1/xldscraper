@@ -565,10 +565,22 @@ for (i in 1:length(subjects[["subject_key"]])) {  ### loop over docs  i <- 14  j
 			    subjectSiteProfileData[1,"v_num_reviews"] <- gsub("[^0-9.]","",subjectSiteProfileData[1,"v_num_reviews"])			    
 			  }		  
 			  
+			  debug("v_rating:  ")
+			  debug(subjectSiteProfileData[1,"v_rating"])
+			  
+			  debug("num ratings:  ")
+			  debug(subjectSiteProfileData[1,"v_num_ratings"])
+			  
+			  debug("num reviews:  ")
+			  debug(subjectSiteProfileData[1,"v_num_reviews"])			  
+			  
+
 				if (subjectSiteProfileData[1,"v_num_ratings"] > 0) {
 					tmpRatsRvws <- getVitalsRatingsReviews(subjectSiteProfileData[1,"v_num_ratings"], aURL)
 					reviews <- tmpRatsRvws
-					
+          
+					debug("REVIEWS::::::")
+					debug(reviews)
 					subjectSiteProfileData[1,"v_pos_ratings"] <- nrow(reviews[as.numeric(reviews$rating) >= 3.5,])
 					subjectSiteProfileData[1,"v_neut_ratings"] <- nrow(reviews[as.numeric(reviews$rating) >= 2.5 & as.numeric(reviews$rating) < 3.5,])
 					subjectSiteProfileData[1,"v_neg_ratings"] <- nrow(reviews[as.numeric(reviews$rating) < 2.5,])					

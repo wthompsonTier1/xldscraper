@@ -380,15 +380,26 @@ getVitalsReviewPage <- function(url)  {
    ##debug("Number of reviews on this page:")
    ##debug(length(revNodes))
    
+
    ## Get the review date  //*[@id="reviewPage"]/div[4]/div[2]/div[1]/div[1]/div[2]/div
-   reviewDate <- as.character(as.Date(gsub("st,|nd,|rd,|th,", ",", getTextContent(revNodes, 'div[1]//h3')), "%B %d, %Y"))
+   reviewDate <- as.character(as.Date(gsub("st,|nd,|rd,|th,", ",", gsub("Posted on ", "", getTextContent(revNodes, 'div[1]//h3'))), "%B %d, %Y"))
    
+debug("ReviewDate:  ")
+debug(reviewDate)
+
+                              
    ## Get the review rating  //*[@id="reviewPage"]/div[4]/div[2]/div[1]/div[1]/div[1]/span[2]
    #reviewRating <- gsub(" of .*", "", getTextContent(revNodes, 'div[1]/h2/'))
-   reviewRating <-  gsub("[^0-9.]", "", getTextContent(revNodes, 'div[1]/h2'))
+   #reviewRating <-  gsub("[^0-9.]", "", getTextContent(revNodes, 'div[1]/h2'))
+   reviewRating <-  gsub("rating-", "", getAttributeValue(revNodes, 'div[1]/h2/span[1]', "class"))
+   
 
    ##reviewRating <- gsub(pattern = "\n", replacement = "", reviewRating, fixed = TRUE )
    reviewRating <- str_trim(reviewRating)   
+   
+   debug("ReviewRating:")
+   debug(reviewRating)
+
    
    ## Get the review text
    reviewText <- c();
