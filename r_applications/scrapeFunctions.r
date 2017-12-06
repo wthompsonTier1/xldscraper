@@ -143,11 +143,12 @@ hg_GetReviews <- function(doc) {
 
 
 hg_getProfileJSON <- function(doc){
-	
 	####Find the appropriate script tag
 	scriptxpath <- "//script[contains(text(),'pageState.pes = ')]"
 	##scriptxpath <- "/html/body/div[2]/div[3]/script[contains(text(),'pageState.pes = ')]"
 	scriptnode <- html_nodes(doc,xpath=scriptxpath)
+	
+	
 	
 
 	json <- "";
@@ -159,8 +160,12 @@ hg_getProfileJSON <- function(doc){
 			##	ends with "facilityLocations";  The goal is to convert the json structure
 			## 	that is in pageState.pes
 			#########
-			regexResult = regexec("pageState\\.pes =.*pageState\\.facilityLocations",scriptText)
+			# 2017-12-06:  no longer works regexResult = regexec("pageState\\.pes =.*pageState\\.facilityLocations",scriptText)
+			regexResult = regexec("pageState\\.pes.*?pageState",scriptText)
+
+			
 			jsonString <- substr(scriptText, regexResult[[1]][1], regexResult[[1]][1] + attr(regexResult[[1]], "match.length")[1]-1)
+			
 			firstBracket <- gregexpr("\\{", jsonString)[[1]][1]
 			lastBracket <- rev(gregexpr("\\}", jsonString)[[1]])[1]
 			jsonString <- substr(jsonString,firstBracket,lastBracket)
