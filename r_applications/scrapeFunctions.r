@@ -387,10 +387,24 @@ getVitalsReviewPage <- function(url)  {
    
 
    ## Get the review date  //*[@id="reviewPage"]/div[4]/div[2]/div[1]/div[1]/div[2]/div
-   reviewDate <- as.character(as.Date(gsub("st,|nd,|rd,|th,", ",", gsub("Posted on ", "", getTextContent(revNodes, 'div[1]//h3'))), "%B %d, %Y"))
    
-debug("ReviewDate:  ")
-debug(reviewDate)
+   
+   ####
+   #reviewDate <- as.character(as.Date(gsub("st,|nd,|rd,|th,", ",", gsub("Posted on ", "", getTextContent(revNodes, 'div[1]//h3'))), "%B %d, %Y"))
+   
+   reviewDate <- getAttributeValue(revNodes,"//*[@itemprop='datePublished']", "content")
+   debug("Pre-formatted-dates:")
+   debug(reviewDate)
+   
+   reviewDate <- as.character(as.Date(reviewDate,"%Y-%m-%d"))
+   debug("Formatted-dates:")
+   debug(reviewDate)
+   
+   	#reviewDateNodes <- html_nodes(revNodes, xpath="//*[@itemprop='datePublished']")
+   	#reviewDates <- getAttributeValue(reviewDateNodes, 'div[1]/h2/span[1]', "class")
+   	#html_attr(nodes, element_id)
+  	#dates <- as.character(as.Date(dates,"%Y-%m-%d")) 	
+
 
                               
    ## Get the review rating  //*[@id="reviewPage"]/div[4]/div[2]/div[1]/div[1]/div[1]/span[2]
