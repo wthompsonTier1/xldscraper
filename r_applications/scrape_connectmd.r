@@ -1161,7 +1161,23 @@ for (i in 1:length(subjects[["subject_key"]])) {  ### loop over docs  i <- 14  j
 					#stop()
 					#dates <-html_attr(html_nodes(html,xpath="//div/div/div[2]/div[1]/div[2]/div[1]/div/div/div[2]/div/div/div[2]/div/span[3]/span/a/abbr"),"title")
 	
-					dates <-as.character(as.Date(html_attr(html_nodes(html,xpath="//div/div/div[2]/div[1]/div[2]/div[1]/div/div/div[2]/div/div/div[2]/div/span[3]/span//abbr"),"title"), format="%A, %B %d, %Y "))	
+
+					#substr(col,2,nchar(col))
+
+					dateText <- substr(html_attr(html_nodes(html,xpath="//abbr"),"title"),0,10)
+					
+					#debug("DateText:")
+					#debug(dateText)
+					#stop()
+					
+					
+					
+					
+					
+						
+
+					dates <-as.character(as.Date(substr(html_attr(html_nodes(html,xpath="//abbr"),"title"),0,10), format="%m/%d/%Y"))	
+
 
 					#debug("lengths:")
 					#debug(length(dates))
